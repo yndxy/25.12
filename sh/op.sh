@@ -179,8 +179,8 @@ if grep -Fq 'webrender/web -type f -size +4k' package/porxy/daed/Makefile; then
   exit 1
 fi
 
-rm -rf feeds/luci/applications/{luci-app-dockerman,luci-app-samba4,luci-app-aria2,luci-app-diskman}
-rm -rf feeds/packages/net/{samba4,v2ray-geodata,mosdns,sing-box,aria2,ariang,adguardhome}
+rm -rf feeds/luci/applications/{luci-app-dockerman,luci-app-samba4,luci-app-aria2,luci-app-diskman,luci-app-mosdns}
+rm -rf feeds/packages/net/{samba4,v2ray-geodata,mosdns,sing-box,aria2,ariang,lucky,adguardhome}
 
 # drop attendedsysupgrade
 sed -i '/luci-app-attendedsysupgrade/d' \
@@ -323,6 +323,17 @@ sed -i 's#20) \* 1000#60) \* 1000#g' feeds/luci/modules/luci-base/htdocs/luci-st
 # luci-compat - remove extra line breaks from description
 sed -i '/<br \/>/d' feeds/luci/modules/luci-compat/luasrc/view/cbi/full_valuefooter.htm
 
+# mosdns
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+
+# Lucky (只拉取指定分支)
+rm -rf package/luci-app-lucky
+git clone https://github.com/sirpdboy/luci-app-lucky.git package/luci-app-lucky
+
+# AdGuardHome
+rm -rf package/luci-app-adguardhome
+git clone https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luci-app-adguardhome
 
 #golang 26.x
 rm -rf feeds/packages/lang/golang
