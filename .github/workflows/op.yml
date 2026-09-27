@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-zerotier luci-app-socat luci-app-samba4 luci-theme-m3e luci-app-ttyd luci-app-diskman luci-app-daed luci-i18n-daed-zh-cn'
+        default: 'luci-app-momo luci-theme-m3e luci-app-ttyd luci-app-diskman luci-app-daed luci-i18n-daed-zh-cn'
         type: string
       BUILD_DATE:
         description: '固件发布日期，留空则使用当天日期'
