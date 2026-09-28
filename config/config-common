@@ -293,4 +293,16 @@ CONFIG_PACKAGE_ca-certificates=y
 CONFIG_PACKAGE_tar=y
 CONFIG_PACKAGE_unzip=y
 
+# 开启 BusyBox 自定义并启用 nohup 与 timeout
+CONFIG_BUSYBOX_CUSTOM=y
+CONFIG_BUSYBOX_CONFIG_NOHUP=y
+CONFIG_BUSYBOX_CONFIG_TIMEOUT=y
 
+# 编译生成 GNU coreutils 及其拆分子包（确保 apk/opkg 能检索到对应包名）
+CONFIG_PACKAGE_coreutils=y
+CONFIG_PACKAGE_coreutils-nohup=y
+CONFIG_PACKAGE_coreutils-timeout=y
+
+# 启用 nftables 队列内核模块及相关底层支持
+CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
