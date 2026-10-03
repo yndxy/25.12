@@ -344,48 +344,195 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+# ==========================================
+# 自动在源码中创建并写入 Aigo AGS21 的 DTS 文件
+# ==========================================
 python3 - <<'PY'
-import re
 from pathlib import Path
 
-dts_files = list(Path("target/linux/mediatek/dts/").glob("*.dts"))
-patched = False
+dts_path = Path("target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
 
-for dts_path in dts_files:
-content = dts_path.read_text()
-if "red:status" in content and "white:status" in content:
-print(f"Found target DTS to patch LEDs: {dts_path}")
-new_leds = """	leds {
-compatible = "gpio-leds";
+# 写入完整的 AGS21 专属 DTS 内容（含正确的 LED、GPIO、内存定义）
+ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
+ */
 
-	status_red_led: red {
-		label = "red:status";
-		gpios = <&pio 6 GPIO_ACTIVE_LOW>;
+/dts-v1/;
+#include 
+#include 
+#include 
+
+#include "mt7981.dtsi"
+
+/ {
+	model = "Aigo AGS21";
+	compatible = "aigo,ags21", "mediatek,mt7981";
+
+	chosen {
+		bootargs = "root=PARTLABEL=rootfs rootwait rootfstype=squashfs,f2fs";
+		stdout-path = "serial0:115200n8";
 	};
 
-	status_blue_led: blue {
-		label = "blue:status";
-		gpios = <&pio 4 GPIO_ACTIVE_LOW>;
+	aliases {
+		led-boot = &status_red_led;
+		led-failsafe = &status_red_led;
+		led-running = &status_blue_led;
+		led-upgrade = &status_blue_led;
+		serial0 = &uart0;
 	};
 
-	internet_led: green {
-		label = "green:status";
-		gpios = <&pio 29 GPIO_ACTIVE_LOW>;
+	memory {
+		reg = <0 0x40000000 0 0x40000000>;
 	};
 
-	wifi_led: white {
-		label = "white:status";
-		gpios = <&pio 30 GPIO_ACTIVE_LOW>;
+	leds {
+		compatible = "gpio-leds";
+
+		status_red_led: led-0 {
+			label = "red:status";
+			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
+		};
+
+		status_blue_led: led-1 {
+			label = "blue:status";
+			gpios = <&pio 4 GPIO_ACTIVE_LOW>;
+		};
+
+		internet_led: led-2 {
+			label = "green:status";
+			gpios = <&pio 29 GPIO_ACTIVE_LOW>;
+		};
+
+		wifi_led: led-3 {
+			label = "white:status";
+			gpios = <&pio 30 GPIO_ACTIVE_LOW>;
+		};
 	};
-};"""
-    new_content = re.sub(r'leds\s*\{[^}]+\};', new_leds, content, flags=re.DOTALL)
-    if new_content != content:
-        dts_path.write_text(new_content)
-        print(f"Successfully patched LEDs in {dts_path} for AGS21!")
-        patched = True
-        break
-if not patched:
-print("WARNING: Could not find matching DTS file to patch LEDs.")
+
+	gpio-keys {
+		compatible = "gpio-keys";
+		reset {
+			label = "reset";
+			linux,code = ;
+			gpios = <&pio 1 GPIO_ACTIVE_LOW>;
+		};
+
+		mesh {
+			label = "mesh";
+			linux,code = ;
+			gpios = <&pio 0 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&watchdog {
+	status = "okay";
+};
+
+&mmc0 {
+	bus-width = <8>;
+	cap-mmc-highspeed;
+	max-frequency = <52000000>;
+	non-removable;
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+	vmmc-supply = <&reg_3p3v>;
+	status = "okay";
+};
+
+&eth {
+	status = "okay";
+
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "2500base-x";
+
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+			pause;
+		};
+	};
+
+	gmac1: mac@1 {
+		compatible = "mediatek,eth-mac";
+		reg = <1>;
+		phy-mode = "gmii";
+		phy-handle = <&int_gbe_phy>;
+	};
+};
+
+&mdio_bus {
+	switch: switch@1f {
+		compatible = "mediatek,mt7531";
+		reg = <31>;
+		reset-gpios = <&pio 39 GPIO_ACTIVE_HIGH>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		interrupt-parent = <&pio>;
+		interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
+	};
+};
+
+&switch {
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+			label = "lan1";
+		};
+
+		port@2 {
+			reg = <2>;
+			label = "lan2";
+		};
+
+		port@6 {
+			reg = <6>;
+			ethernet = <&gmac0>;
+			phy-mode = "2500base-x";
+
+			fixed-link {
+				speed = <2500>;
+				full-duplex;
+				pause;
+			};
+		};
+	};
+};
+
+&pio {
+	mmc0_pins_default: mmc0-pins-default {
+		mux {
+			function = "flash";
+			groups = "emmc_45";
+		};
+	};
+
+	mmc0_pins_uhs: mmc0-pins-uhs {
+		mux {
+			function = "flash";
+			groups = "emmc_45";
+		};
+	};
+};
+
+&wifi {
+	status = "okay";
+};
+"""
+
+dts_path.write_text(ags21_dts_content)
+print(f"Successfully created custom DTS at {dts_path}")
 PY
 
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
