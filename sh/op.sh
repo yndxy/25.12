@@ -344,6 +344,50 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+python3 - <<'PY'
+import re
+from pathlib import Path
+
+dts_files = list(Path("target/linux/mediatek/dts/").glob("*.dts"))
+patched = False
+
+for dts_path in dts_files:
+content = dts_path.read_text()
+if "red:status" in content and "white:status" in content:
+print(f"Found target DTS to patch LEDs: {dts_path}")
+new_leds = """	leds {
+compatible = "gpio-leds";
+
+	status_red_led: red {
+		label = "red:status";
+		gpios = <&pio 6 GPIO_ACTIVE_LOW>;
+	};
+
+	status_blue_led: blue {
+		label = "blue:status";
+		gpios = <&pio 4 GPIO_ACTIVE_LOW>;
+	};
+
+	internet_led: green {
+		label = "green:status";
+		gpios = <&pio 29 GPIO_ACTIVE_LOW>;
+	};
+
+	wifi_led: white {
+		label = "white:status";
+		gpios = <&pio 30 GPIO_ACTIVE_LOW>;
+	};
+};"""
+    new_content = re.sub(r'leds\s*\{[^}]+\};', new_leds, content, flags=re.DOTALL)
+    if new_content != content:
+        dts_path.write_text(new_content)
+        print(f"Successfully patched LEDs in {dts_path} for AGS21!")
+        patched = True
+        break
+if not patched:
+print("WARNING: Could not find matching DTS file to patch LEDs.")
+PY
+
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 
