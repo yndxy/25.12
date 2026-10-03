@@ -2,9 +2,9 @@
 
 function git_sparse_clone() {
   branch="$1" repourl="$2" && shift 2
-  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse$repourl
-  repodir=$(echo $repourl \vert{} awk -F '/' '{print$(NF)}')
-  cd $repodir && git sparse-checkout set$@
+  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
+  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
+  cd $repodir && git sparse-checkout set $@
   mv -f $@ ../
   cd .. && rm -rf $repodir
 }
@@ -92,9 +92,9 @@ for line in lines:
         ])
         patched_build = True
         continue
-    if "cp -rf $(DAED_BUILD_DIR)/apps/web/dist/*$(PKG_BUILD_DIR)/webrender/web" in line:
+    if "cp -rf $(DAED_BUILD_DIR)/apps/web/dist/* $(PKG_BUILD_DIR)/webrender/web" in line:
         out.extend([
-            "\t\tcp -rf $(DAED_BUILD_DIR)/apps/web/dist/.$(PKG_BUILD_DIR)/webrender/web ; \\\n",
+            "\t\tcp -rf $(DAED_BUILD_DIR)/apps/web/dist/. $(PKG_BUILD_DIR)/webrender/web ; \\\n",
             "\t\ttest -s $(PKG_BUILD_DIR)/webrender/web/index.html || { echo \"ERROR: daed web assets were not generated\"; find $(DAED_BUILD_DIR)/apps -maxdepth 4 -type f | sort | tail -200; exit 1; } ; \\\n",
             "\t\tfind $(PKG_BUILD_DIR)/webrender/web -type f -print -quit | grep -q . || { echo \"ERROR: dae-wing webrender/web is empty\"; exit 1; } ; \\\n",
             "\t\tif grep -RInE \"^[[:space:]]*import[[:space:]]+(.*from[[:space:]]+)?[\\\"'][^./][^\\\"']*[\\\"']\" $(PKG_BUILD_DIR)/webrender/web/assets/*.js 2>/dev/null ; then echo \"ERROR: daed web assets contain browser-side bare module imports\"; exit 1; fi ; \\\n",
@@ -216,7 +216,7 @@ if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
             print ""
             print "define Build/jcg-q30-pro-sysupgrade-bin"
             print "\tsh $(TOPDIR)/scripts/sysupgrade-tar.sh \\"
-            print "\t\t--board $(if$(BOARD_NAME),$(BOARD_NAME),$(DEVICE_NAME)) \\"
+            print "\t\t--board $(if $(BOARD_NAME),$(BOARD_NAME),$(DEVICE_NAME)) \\"
             print "\t\t--kernel $@ \\"
             print "\t\t--rootfs $(IMAGE_ROOTFS) \\"
             print "\t\t$@.tar"
@@ -237,7 +237,10 @@ if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
             print "  KERNEL := kernel-bin | gzip | \\"
             print "\tpad-to 64k"
             print "  IMAGE/sysupgrade.bin := append-kernel | \\"
-            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb \vert{} \\"             print "\tjcg-q30-pro-sysupgrade-bin \vert{} append-metadata"             print "  IMAGE/sysupgrade.itb := append-kernel \vert{} \\"             print "\tfit gzip $$(KDIR)/image-$$(firstword$$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata"
+            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | \\"
+            print "\tjcg-q30-pro-sysupgrade-bin | append-metadata"
+            print "  IMAGE/sysupgrade.itb := append-kernel | \\"
+            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata"
             print "  DEVICE_PACKAGES :="
             print "  ARTIFACTS := preloader.bin bl31-uboot.fip"
             print "  ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3"
@@ -341,268 +344,6 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-==========================================
-自动在源码中注入 Aigo AGS21 专属 DTS 文件
-==========================================
-python3 - <<'PY'
-from pathlib import Path
-
-dts_path = Path("target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
-
-ags21_dts_content = r"""// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/*
-
-Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
-
-Based on dailook's device tree (kiddin9/Kwrt)
-*/
-
-/dts-v1/;
-#include
-#include
-#include
-
-#include "mt7981.dtsi"
-
-/ {
-model = "Aigo AGS21";
-compatible = "aigo,ags21", "mediatek,mt7981";
-
-chosen {
-	bootargs = "root=PARTLABEL=rootfs rootwait rootfstype=squashfs,f2fs";
-	stdout-path = "serial0:115200n8";
-};
-
-aliases {
-	led-boot = &status_red_led;
-	led-failsafe = &status_red_led;
-	led-running = &status_blue_led;
-	led-upgrade = &status_blue_led;
-	serial0 = &uart0;
-};
-
-memory {
-	reg = <0 0x40000000 0 0x40000000>;
-};
-
-leds {
-	compatible = "gpio-leds";
-
-	status_red_led: led-0 {
-		label = "red:status";
-		gpios = <&pio 6 GPIO_ACTIVE_LOW>;
-	};
-
-	status_blue_led: led-1 {
-		label = "blue:status";
-		gpios = <&pio 4 GPIO_ACTIVE_LOW>;
-	};
-
-	internet_led: led-2 {
-		label = "green:status";
-		gpios = <&pio 29 GPIO_ACTIVE_LOW>;
-	};
-
-	wifi_led: led-3 {
-		label = "white:status";
-		gpios = <&pio 30 GPIO_ACTIVE_LOW>;
-	};
-};
-
-gpio-keys {
-	compatible = "gpio-keys";
-	reset {
-		label = "reset";
-		linux,code = ;
-		gpios = <&pio 1 GPIO_ACTIVE_LOW>;
-	};
-
-	mesh {
-		label = "mesh";
-		linux,code = ;
-		gpios = <&pio 0 GPIO_ACTIVE_LOW>;
-	};
-};
-};
-
-&uart0 {
-status = "okay";
-};
-
-&watchdog {
-status = "okay";
-};
-
-&mmc0 {
-bus-width = <8>;
-cap-mmc-highspeed;
-max-frequency = <52000000>;
-non-removable;
-pinctrl-names = "default", "state_uhs";
-pinctrl-0 = <&mmc0_pins_default>;
-pinctrl-1 = <&mmc0_pins_uhs>;
-vmmc-supply = <&reg_3p3v>;
-status = "okay";
-
-card@0 {
-	compatible = "mmc-card";
-	reg = <0>;
-
-	block {
-		compatible = "block-device";
-
-		partitions {
-			block-partition-factory {
-				partname = "factory";
-
-				nvmem-layout {
-					compatible = "fixed-layout";
-					#address-cells = <1>;
-					#size-cells = <1>;
-
-					eeprom_factory_0: eeprom@0 {
-						reg = <0x0 0x1000>;
-					};
-
-					macaddr_factory_4: macaddr@4 {
-						compatible = "mac-base";
-						reg = <0x4 0x6>;
-						#nvmem-cell-cells = <1>;
-					};
-
-					macaddr_factory_24: macaddr@24 {
-						compatible = "mac-base";
-						reg = <0x24 0x6>;
-						#nvmem-cell-cells = <1>;
-					};
-
-					macaddr_factory_2a: macaddr@2a {
-						compatible = "mac-base";
-						reg = <0x2a 0x6>;
-						#nvmem-cell-cells = <1>;
-					};
-
-					macaddr_factory_30: macaddr@30 {
-						compatible = "mac-base";
-						reg = <0x30 0x6>;
-						#nvmem-cell-cells = <1>;
-					};
-				};
-			};
-		};
-	};
-};
-};
-
-&eth {
-status = "okay";
-
-gmac0: mac@0 {
-	compatible = "mediatek,eth-mac";
-	reg = <0>;
-	phy-mode = "2500base-x";
-
-	nvmem-cells = <&macaddr_factory_2a 0>;
-	nvmem-cell-names = "mac-address";
-
-	fixed-link {
-		speed = <2500>;
-		full-duplex;
-		pause;
-	};
-};
-
-gmac1: mac@1 {
-	compatible = "mediatek,eth-mac";
-	reg = <1>;
-	phy-mode = "gmii";
-	phy-handle = <&int_gbe_phy>;
-
-	nvmem-cells = <&macaddr_factory_24 0>;
-	nvmem-cell-names = "mac-address";
-};
-};
-
-&mdio_bus {
-switch: switch@1f {
-compatible = "mediatek,mt7531";
-reg = <31>;
-reset-gpios = <&pio 39 GPIO_ACTIVE_HIGH>;
-interrupt-controller;
-#interrupt-cells = <1>;
-interrupt-parent = <&pio>;
-interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
-};
-};
-
-&switch {
-ports {
-#address-cells = <1>;
-#size-cells = <0>;
-
-	port@1 {
-		reg = <1>;
-		label = "lan1";
-	};
-
-	port@2 {
-		reg = <2>;
-		label = "lan2";
-	};
-
-	port@6 {
-		reg = <6>;
-		ethernet = <&gmac0>;
-		phy-mode = "2500base-x";
-
-		fixed-link {
-			speed = <2500>;
-			full-duplex;
-			pause;
-		};
-	};
-};
-};
-
-&pio {
-mmc0_pins_default: mmc0-pins-default {
-mux {
-function = "flash";
-groups = "emmc_45";
-};
-};
-
-mmc0_pins_uhs: mmc0-pins-uhs {
-	mux {
-		function = "flash";
-		groups = "emmc_45";
-	};
-};
-};
-
-&wifi {
-status = "okay";
-nvmem-cells = <&eeprom_factory_0>;
-nvmem-cell-names = "eeprom";
-
-band@0 {
-	reg = <0>;
-	nvmem-cells = <&macaddr_factory_4 0>;
-	nvmem-cell-names = "mac-address";
-};
-
-band@1 {
-	reg = <1>;
-	nvmem-cells = <&macaddr_factory_30 0>;
-	nvmem-cell-names = "mac-address";
-};
-};
-"""
-
-dts_path.write_text(ags21_dts_content)
-print(f"Successfully created complete Aigo AGS21 DTS at {dts_path}")
-PY
-
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 
@@ -616,11 +357,11 @@ date=$(date +"%Y-%m-%d")
 
 
 echo "                                                    " >> package/base-files/files/etc/banner
-echo "  _______                                ________     __" >> package/base-files/files/etc/banner
+echo "  _______                     ________        __" >> package/base-files/files/etc/banner
 echo " |       |.-----.-----.-----.|  |  |  |.----.|  |_" >> package/base-files/files/etc/banner
 echo " |   -   ||  _  |  -__|     ||  |  |  ||   _||   _|" >> package/base-files/files/etc/banner
 echo " |_______||   __|_____|__|__||________||__|  |____|" >> package/base-files/files/etc/banner
-echo "         |__|" >> package/base-files/files/etc/banner
+echo "          |__|" >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
-echo "         %D ${date} by$OP_author                     " >> package/base-files/files/etc/banner
+echo "         %D ${date} by $OP_author                     " >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
