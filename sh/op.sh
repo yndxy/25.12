@@ -2,9 +2,9 @@
 
 function git_sparse_clone() {
   branch="$1" repourl="$2" && shift 2
-  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
-  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
-  cd $repodir && git sparse-checkout set $@
+  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse$repourl
+  repodir=$(echo $repourl \vert{} awk -F '/' '{print$(NF)}')
+  cd $repodir && git sparse-checkout set$@
   mv -f $@ ../
   cd .. && rm -rf $repodir
 }
@@ -92,9 +92,9 @@ for line in lines:
         ])
         patched_build = True
         continue
-    if "cp -rf $(DAED_BUILD_DIR)/apps/web/dist/* $(PKG_BUILD_DIR)/webrender/web" in line:
+    if "cp -rf $(DAED_BUILD_DIR)/apps/web/dist/*$(PKG_BUILD_DIR)/webrender/web" in line:
         out.extend([
-            "\t\tcp -rf $(DAED_BUILD_DIR)/apps/web/dist/. $(PKG_BUILD_DIR)/webrender/web ; \\\n",
+            "\t\tcp -rf $(DAED_BUILD_DIR)/apps/web/dist/.$(PKG_BUILD_DIR)/webrender/web ; \\\n",
             "\t\ttest -s $(PKG_BUILD_DIR)/webrender/web/index.html || { echo \"ERROR: daed web assets were not generated\"; find $(DAED_BUILD_DIR)/apps -maxdepth 4 -type f | sort | tail -200; exit 1; } ; \\\n",
             "\t\tfind $(PKG_BUILD_DIR)/webrender/web -type f -print -quit | grep -q . || { echo \"ERROR: dae-wing webrender/web is empty\"; exit 1; } ; \\\n",
             "\t\tif grep -RInE \"^[[:space:]]*import[[:space:]]+(.*from[[:space:]]+)?[\\\"'][^./][^\\\"']*[\\\"']\" $(PKG_BUILD_DIR)/webrender/web/assets/*.js 2>/dev/null ; then echo \"ERROR: daed web assets contain browser-side bare module imports\"; exit 1; fi ; \\\n",
@@ -216,7 +216,7 @@ if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
             print ""
             print "define Build/jcg-q30-pro-sysupgrade-bin"
             print "\tsh $(TOPDIR)/scripts/sysupgrade-tar.sh \\"
-            print "\t\t--board $(if $(BOARD_NAME),$(BOARD_NAME),$(DEVICE_NAME)) \\"
+            print "\t\t--board $(if$(BOARD_NAME),$(BOARD_NAME),$(DEVICE_NAME)) \\"
             print "\t\t--kernel $@ \\"
             print "\t\t--rootfs $(IMAGE_ROOTFS) \\"
             print "\t\t$@.tar"
@@ -237,10 +237,7 @@ if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
             print "  KERNEL := kernel-bin | gzip | \\"
             print "\tpad-to 64k"
             print "  IMAGE/sysupgrade.bin := append-kernel | \\"
-            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | \\"
-            print "\tjcg-q30-pro-sysupgrade-bin | append-metadata"
-            print "  IMAGE/sysupgrade.itb := append-kernel | \\"
-            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata"
+            print "\tfit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb \vert{} \\"             print "\tjcg-q30-pro-sysupgrade-bin \vert{} append-metadata"             print "  IMAGE/sysupgrade.itb := append-kernel \vert{} \\"             print "\tfit gzip $$(KDIR)/image-$$(firstword$$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata"
             print "  DEVICE_PACKAGES :="
             print "  ARTIFACTS := preloader.bin bl31-uboot.fip"
             print "  ARTIFACT/preloader.bin := mt7981-bl2 spim-nand-ddr3"
@@ -345,23 +342,22 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 ./scripts/feeds install -a
 
 # ==========================================
-# 自动在源码中创建并写入 Aigo AGS21 的 DTS 文件
+# 自动在源码中创建并写入 Aigo AGS21 的 DTS 文件 (已修复完整性)
 # ==========================================
 python3 - <<'PY'
 from pathlib import Path
 
 dts_path = Path("target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
 
-# 写入完整的 AGS21 专属 DTS 内容（含正确的 LED、GPIO、内存定义）
 ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 /*
  * Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
  */
 
 /dts-v1/;
-#include 
-#include 
-#include 
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 
 #include "mt7981.dtsi"
 
@@ -414,13 +410,13 @@ ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 		compatible = "gpio-keys";
 		reset {
 			label = "reset";
-			linux,code = ;
+			linux,code = <KEY_RESTART>;
 			gpios = <&pio 1 GPIO_ACTIVE_LOW>;
 		};
 
 		mesh {
 			label = "mesh";
-			linux,code = ;
+			linux,code = <BTN_9>;
 			gpios = <&pio 0 GPIO_ACTIVE_LOW>;
 		};
 	};
@@ -463,7 +459,7 @@ ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
 	gmac1: mac@1 {
 		compatible = "mediatek,eth-mac";
-		reg = <1>;
+		reg = ;
 		phy-mode = "gmii";
 		phy-handle = <&int_gbe_phy>;
 	};
@@ -475,7 +471,7 @@ ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 		reg = <31>;
 		reset-gpios = <&pio 39 GPIO_ACTIVE_HIGH>;
 		interrupt-controller;
-		#interrupt-cells = <1>;
+		#interrupt-cells = ;
 		interrupt-parent = <&pio>;
 		interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -483,11 +479,11 @@ ags21_dts_content = """// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 
 &switch {
 	ports {
-		#address-cells = <1>;
+		#address-cells = ;
 		#size-cells = <0>;
 
 		port@1 {
-			reg = <1>;
+			reg = ;
 			label = "lan1";
 		};
 
@@ -548,11 +544,11 @@ date=$(date +"%Y-%m-%d")
 
 
 echo "                                                    " >> package/base-files/files/etc/banner
-echo "  _______                     ________        __" >> package/base-files/files/etc/banner
+echo "  _______                                ________     __" >> package/base-files/files/etc/banner
 echo " |       |.-----.-----.-----.|  |  |  |.----.|  |_" >> package/base-files/files/etc/banner
 echo " |   -   ||  _  |  -__|     ||  |  |  ||   _||   _|" >> package/base-files/files/etc/banner
 echo " |_______||   __|_____|__|__||________||__|  |____|" >> package/base-files/files/etc/banner
-echo "          |__|" >> package/base-files/files/etc/banner
+echo "         |__|" >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
-echo "         %D ${date} by $OP_author                     " >> package/base-files/files/etc/banner
+echo "         %D ${date} by$OP_author                     " >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
