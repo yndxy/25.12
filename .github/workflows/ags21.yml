@@ -152,39 +152,312 @@ jobs:
         mv daede-src/dae daede-src/daed daede-src/luci-app-daede openwrt/package/porxy/
         rm -rf daede-src
 
-    - name: Load Aigo AGS21 eMMC config
+    - name: Load Aigo AGS21 eMMC config & inject DTS
+      env:
+        CUSTOM_PLUGINS: ${{ github.event.inputs.CUSTOM_PLUGINS }}
+        OP_IP: ${{ github.event.inputs.OP_IP }}
       run: |
-        [ -e files ] && mv files openwrt/files
-        rm -f openwrt/files/etc/uci-defaults/98-install-daed-runfiles
-        cat <>openwrt/.config
-        CONFIG_TARGET_mediatek=y
-        CONFIG_TARGET_mediatek_filogic=y
-        CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y
-        EOF
+        python3 - <<'PY'
+        from pathlib import Path
+        import os
+        import shutil
 
-        [ -e config ] && cat config/config-common >> openwrt/.config
-
-        cat <>openwrt/.config
-        CONFIG_PACKAGE_luci-app-daede=y
-        CONFIG_PACKAGE_luci-app-daede_daed=y
-        # CONFIG_PACKAGE_luci-app-daede_dae is not set
-        CONFIG_PACKAGE_daed=y
-        CONFIG_DAED_USE_KERNEL_BTF=y
-        # CONFIG_DAED_USE_VMLINUX_BTF is not set
-        EOF
-
-        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
-
-        IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
-        for plugin in "${plugins[@]}"; do
-          case "$plugin" in
-            luci-app-daed|luci-i18n-daed-zh-cn|luci-app-daede|daed|dae)
-              continue
-              ;;
-          esac
-          echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
-        done
+        dts_path = Path("openwrt/target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
+        dts_path.parent.mkdir(parents=True, exist_ok=True)
         
+        ags21_dts_content = r"""// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+        /*
+         * Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
+         * Based on dailook's device tree (kiddin9/Kwrt)
+         */
+
+        /dts-v1/;
+        #include 
+        #include 
+        #include 
+
+        #include "mt7981.dtsi"
+
+        / {
+            model = "Aigo AGS21";
+            compatible = "aigo,ags21", "mediatek,mt7981";
+
+            chosen {
+                bootargs = "root=PARTLABEL=rootfs rootwait rootfstype=squashfs,f2fs";
+                stdout-path = "serial0:115200n8";
+            };
+
+            aliases {
+                led-boot = &status_red_led;
+                led-failsafe = &status_red_led;
+                led-running = &status_blue_led;
+                led-upgrade = &status_blue_led;
+                serial0 = &uart0;
+            };
+
+            memory {
+                reg = <0 0x40000000 0 0x40000000>;
+            };
+
+            leds {
+                compatible = "gpio-leds";
+
+                status_red_led: led-0 {
+                    label = "red:status";
+                    gpios = <&pio 6 GPIO_ACTIVE_LOW>;
+                };
+
+                status_blue_led: led-1 {
+                    label = "blue:status";
+                    gpios = <&pio 4 GPIO_ACTIVE_LOW>;
+                };
+
+                internet_led: led-2 {
+                    label = "green:status";
+                    gpios = <&pio 29 GPIO_ACTIVE_LOW>;
+                };
+
+                wifi_led: led-3 {
+                    label = "white:status";
+                    gpios = <&pio 30 GPIO_ACTIVE_LOW>;
+                };
+            };
+
+            gpio-keys {
+                compatible = "gpio-keys";
+                reset {
+                    label = "reset";
+                    linux,code = ;
+                    gpios = <&pio 1 GPIO_ACTIVE_LOW>;
+                };
+
+                mesh {
+                    label = "mesh";
+                    linux,code = ;
+                    gpios = <&pio 0 GPIO_ACTIVE_LOW>;
+                };
+            };
+        };
+
+        &uart0 {
+            status = "okay";
+        };
+
+        &watchdog {
+            status = "okay";
+        };
+
+        &mmc0 {
+            bus-width = <8>;
+            cap-mmc-highspeed;
+            max-frequency = <52000000>;
+            non-removable;
+            pinctrl-names = "default", "state_uhs";
+            pinctrl-0 = <&mmc0_pins_default>;
+            pinctrl-1 = <&mmc0_pins_uhs>;
+            vmmc-supply = <&reg_3p3v>;
+            status = "okay";
+
+            card@0 {
+                compatible = "mmc-card";
+                reg = <0>;
+
+                block {
+                    compatible = "block-device";
+
+                    partitions {
+                        block-partition-factory {
+                            partname = "factory";
+
+                            nvmem-layout {
+                                compatible = "fixed-layout";
+                                #address-cells = <1>;
+                                #size-cells = <1>;
+
+                                eeprom_factory_0: eeprom@0 {
+                                    reg = <0x0 0x1000>;
+                                };
+
+                                macaddr_factory_4: macaddr@4 {
+                                    compatible = "mac-base";
+                                    reg = <0x4 0x6>;
+                                    #nvmem-cell-cells = <1>;
+                                };
+
+                                macaddr_factory_24: macaddr@24 {
+                                    compatible = "mac-base";
+                                    reg = <0x24 0x6>;
+                                    #nvmem-cell-cells = <1>;
+                                };
+
+                                macaddr_factory_2a: macaddr@2a {
+                                    compatible = "mac-base";
+                                    reg = <0x2a 0x6>;
+                                    #nvmem-cell-cells = <1>;
+                                };
+
+                                macaddr_factory_30: macaddr@30 {
+                                    compatible = "mac-base";
+                                    reg = <0x30 0x6>;
+                                    #nvmem-cell-cells = <1>;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+
+        &eth {
+            status = "okay";
+
+            gmac0: mac@0 {
+                compatible = "mediatek,eth-mac";
+                reg = <0>;
+                phy-mode = "2500base-x";
+
+                nvmem-cells = <&macaddr_factory_2a 0>;
+                nvmem-cell-names = "mac-address";
+
+                fixed-link {
+                    speed = <2500>;
+                    full-duplex;
+                    pause;
+                };
+            };
+
+            gmac1: mac@1 {
+                compatible = "mediatek,eth-mac";
+                reg = <1>;
+                phy-mode = "gmii";
+                phy-handle = <&int_gbe_phy>;
+
+                nvmem-cells = <&macaddr_factory_24 0>;
+                nvmem-cell-names = "mac-address";
+            };
+        };
+
+        &mdio_bus {
+            switch: switch@1f {
+                compatible = "mediatek,mt7531";
+                reg = <31>;
+                reset-gpios = <&pio 39 GPIO_ACTIVE_HIGH>;
+                interrupt-controller;
+                #interrupt-cells = <1>;
+                interrupt-parent = <&pio>;
+                interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
+            };
+        };
+
+        &switch {
+            ports {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                port@1 {
+                    reg = <1>;
+                    label = "lan1";
+                };
+
+                port@2 {
+                    reg = <2>;
+                    label = "lan2";
+                };
+
+                port@6 {
+                    reg = <6>;
+                    ethernet = <&gmac0>;
+                    phy-mode = "2500base-x";
+
+                    fixed-link {
+                        speed = <2500>;
+                        full-duplex;
+                        pause;
+                    };
+                };
+            };
+        };
+
+        &pio {
+            mmc0_pins_default: mmc0-pins-default {
+                mux {
+                    function = "flash";
+                    groups = "emmc_45";
+                };
+            };
+
+            mmc0_pins_uhs: mmc0-pins-uhs {
+                mux {
+                    function = "flash";
+                    groups = "emmc_45";
+                };
+            };
+        };
+
+        &wifi {
+            status = "okay";
+            nvmem-cells = <&eeprom_factory_0>;
+            nvmem-cell-names = "eeprom";
+
+            band@0 {
+                reg = <0>;
+                nvmem-cells = <&macaddr_factory_4 0>;
+                nvmem-cell-names = "mac-address";
+            };
+
+            band@1 {
+                reg = <1>;
+                nvmem-cells = <&macaddr_factory_30 0>;
+                nvmem-cell-names = "mac-address";
+            };
+        };
+        """
+        dts_path.write_text(ags21_dts_content)
+
+        config_path = Path("openwrt/.config")
+        lines = [
+            "CONFIG_TARGET_mediatek=y",
+            "CONFIG_TARGET_mediatek_filogic=y",
+            "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y",
+            "CONFIG_PACKAGE_luci-app-daede=y",
+            "CONFIG_PACKAGE_luci-app-daede_daed=y",
+            "# CONFIG_PACKAGE_luci-app-daede_dae is not set",
+            "CONFIG_PACKAGE_daed=y",
+            "CONFIG_DAED_USE_KERNEL_BTF=y",
+            "# CONFIG_DAED_USE_VMLINUX_BTF is not set"
+        ]
+
+        common_config = Path("config/config-common")
+        if common_config.exists():
+            lines.append(common_config.read_text())
+
+        custom_plugins = os.environ.get("CUSTOM_PLUGINS", "").split()
+        for plugin in custom_plugins:
+            if plugin not in ["luci-app-daed", "luci-i18n-daed-zh-cn", "luci-app-daede", "daed", "dae"]:
+                lines.append(f"CONFIG_PACKAGE_{plugin}=y")
+
+        config_path.write_text("\n".join(lines) + "\n")
+
+        ip_val = os.environ.get("OP_IP", "192.168.2.1")
+        gen_path = Path("openwrt/package/base-files/files/bin/config_generate")
+        if gen_path.exists():
+            text = gen_path.read_text()
+            text = text.replace("192.168.1.1", ip_val)
+            gen_path.write_text(text)
+
+        files_dir = Path("files")
+        if files_dir.exists():
+            dest_files = Path("openwrt/files")
+            if dest_files.exists():
+                shutil.rmtree(dest_files)
+            shutil.copytree(files_dir, dest_files)
+            uci_default = dest_files.joinpath("etc/uci-defaults/98-install-daed-runfiles")
+            if uci_default.exists():
+                uci_default.unlink()
+
+        print("Aigo AGS21 configuration and DTS injected successfully via Python!")
+        PY
+
     - name: Download package sources
       id: package
       run: |
@@ -249,7 +522,7 @@ jobs:
         rm -rf *kernel.bin
         rm -rf *.sha
         rm -rf sha256sums
-        echo "FIRMWARE=\(PWD" >>\)GITHUB_ENV
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload firmware to Releases
       uses: softprops/action-gh-release@v3
