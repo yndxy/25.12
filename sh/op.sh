@@ -604,6 +604,47 @@ dts_path.write_text(ags21_dts_content)
 print(f"Successfully created custom DTS at {dts_path}")
 PY
 
+# ==========================================
+# 自动在 filogic.mk 中注册 aigo_ags21 设备
+# ==========================================
+python3 - <<'PY'
+from pathlib import Path
+
+filogic_mk = Path("target/linux/mediatek/image/filogic.mk")
+content = filogic_mk.read_text()
+
+if "Device/aigo_ags21" not in content:
+    print("Registering aigo_ags21 in filogic.mk...")
+    # 追加 AGS21 的打包定义
+    ags21_device_def = """
+define Device/aigo_ags21
+  DEVICE_VENDOR := Aigo
+  DEVICE_MODEL := AGS21
+  DEVICE_DTS := mt7981-aigo-ags21
+  DEVICE_DTS_DIR := ../dts
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  KERNEL_IN_UBI := 1
+  UBOOTENV_IN_UBI := 1
+  IMAGES := sysupgrade.bin sysupgrade.itb
+  KERNEL := kernel-bin | gzip | \\
+	pad-to 64k
+  IMAGE/sysupgrade.bin := append-kernel | \\
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | \\
+	append-metadata
+  IMAGE/sysupgrade.itb := append-kernel | \\
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | append-metadata
+  DEVICE_PACKAGES := kmod-usb-ohci kmod-usb2 kmod-mmc
+endef
+TARGET_DEVICES += aigo_ags21
+"""
+    filogic_mk.write_text(content + ags21_device_def)
+    print("Successfully registered aigo_ags21!")
+else:
+    print("aigo_ags21 already registered in filogic.mk")
+PY
+
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 
