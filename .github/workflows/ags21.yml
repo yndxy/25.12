@@ -184,7 +184,7 @@ jobs:
           esac
           echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
         done
-
+        
     - name: Download package sources
       id: package
       run: |
