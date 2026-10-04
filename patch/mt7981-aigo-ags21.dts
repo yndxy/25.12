@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-/*
+//*
  * Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
  * Based on dailook's device tree (kiddin9/Kwrt)
  */
