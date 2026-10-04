@@ -1,4 +1,4 @@
-name: s21
+name: op-ags21
 
 on:
   workflow_dispatch:
@@ -162,6 +162,7 @@ jobs:
         import os
         import shutil
 
+        # 1. 写入 AGS21 专属 DTS 文件
         dts_path = Path("openwrt/target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
         dts_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -414,6 +415,30 @@ jobs:
         """
         dts_path.write_text(ags21_dts_content)
 
+        # 2. 在 filogic.mk 中注册 aigo_ags21 设备镜像生成规则
+        filogic_mk = Path("openwrt/target/linux/mediatek/image/filogic.mk")
+        if filogic_mk.exists():
+            mk_content = filogic_mk.read_text()
+            if "Device/aigo_ags21" not in mk_content:
+                ags21_def = """
+define Device/aigo_ags21
+  DEVICE_VENDOR := Aigo
+  DEVICE_MODEL := AGS21
+  DEVICE_DTS := mt7981-aigo-ags21
+  DEVICE_DTS_DIR := $(DTS_DIR)
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := append-kernel | fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | append-metadata
+  DEVICE_PACKAGES := kmod-usb-ohci kmod-usb2 kmod-mmc
+endef
+TARGET_DEVICES += aigo_ags21
+"""
+                filogic_mk.write_text(mk_content + ags21_def)
+                print("Successfully registered aigo_ags21 in filogic.mk")
+
+        # 3. 写入 .config 配置
         config_path = Path("openwrt/.config")
         lines = [
             "CONFIG_TARGET_mediatek=y",
@@ -438,6 +463,7 @@ jobs:
 
         config_path.write_text("\n".join(lines) + "\n")
 
+        # 4. 修改默认 IP
         ip_val = os.environ.get("OP_IP", "192.168.2.1")
         gen_path = Path("openwrt/package/base-files/files/bin/config_generate")
         if gen_path.exists():
@@ -445,6 +471,7 @@ jobs:
             text = text.replace("192.168.1.1", ip_val)
             gen_path.write_text(text)
 
+        # 5. 复制 files 并清理冲突脚本
         files_dir = Path("files")
         if files_dir.exists():
             dest_files = Path("openwrt/files")
