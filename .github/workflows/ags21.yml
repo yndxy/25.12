@@ -84,26 +84,18 @@ jobs:
         echo "REPO_URL=https://github.com/shiyu1314/openwrt-source" >> $GITHUB_ENV
         echo "REPO_BRANCH=openwrt-25.12" >> $GITHUB_ENV
 
-     - name: Clone source
+    - name: Clone source
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone $REPO_URL $SOURCE_NAME
-        ln -sf /workdir/$SOURCE_NAME $GITHUB_WORKSPACE/$SOURCE_NAME
+        git clone https://github.com/shiyu1314/openwrt-source openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Checkout source tag
       run: |
-        cd $SOURCE_NAME
-        case $REPO_BRANCH in
-          openwrt-25.12)
-            _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
-            git checkout $_release_tag
-            ;;
-          *)
-            echo "Can't get local/upstream branch or tag"
-            exit 1
-            ;;
-        esac
+        cd openwrt
+        _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
+        git checkout $_release_tag
         echo "release_tag=\(_release_tag" >>\)GITHUB_ENV
 
     - name: Restore build cache
@@ -111,22 +103,22 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: |
-          ${{ matrix.source }}/dl
-          ${{ matrix.source }}/staging_dir
-          ${{ matrix.source }}/build_dir/host
-          ${{ matrix.source }}/build_dir/hostpkg
-          ${{ matrix.source }}/build_dir/toolchain-*
-          ${{ matrix.source }}/bin/packages
-          ${{ matrix.source }}/bin/targets
-        key: \({{ matrix.source }}-\){{ matrix.device }}-build-cache-${{ github.run_id }}
+          openwrt/dl
+          openwrt/staging_dir
+          openwrt/build_dir/host
+          openwrt/build_dir/hostpkg
+          openwrt/build_dir/toolchain-*
+          openwrt/bin/packages
+          openwrt/bin/targets
+        key: openwrt-aigo-ags21-emmc-build-cache-${{ github.run_id }}
         restore-keys: |
-          \({{ matrix.source }}-\){{ matrix.device }}-build-cache-
-          ${{ matrix.source }}-aigo-ags21-emmc-build-cache-
-          ${{ matrix.source }}-mt7981-multi-build-cache-
+          openwrt-aigo-ags21-emmc-build-cache-
+          openwrt-xr30-emmc-build-cache-
+          openwrt-mt7981-multi-build-cache-
 
     - name: Validate toolchain cache
       run: |
-        cd $SOURCE_NAME
+        cd openwrt
         if [ -d staging_dir ] && ! find staging_dir -path '*/toolchain-*/lib/libgcc_s.so.*' | grep -q .; then
           echo "::warning::Restored toolchain cache is incomplete; rebuilding toolchain only."
           rm -rf staging_dir/toolchain-* build_dir/toolchain-* build_dir/target-*/toolchain
@@ -137,42 +129,42 @@ jobs:
     - name: Prepare feeds and patches
       run: |
         set -x
-        cd $SOURCE_NAME
+        cd openwrt
         [ -d ./staging_dir ] && find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
         ./scripts/feeds update -a
         cd ..
-        [ -e patch ] && cp -rf patch/diy/*.patch $SOURCE_NAME
-        [ -e patch ] && cp -rf patch/luci/*.patch $SOURCE_NAME/feeds/luci
+        [ -e patch ] && cp -rf patch/diy/*.patch openwrt
+        [ -e patch ] && cp -rf patch/luci/*.patch openwrt/feeds/luci
 
     - name: Run common custom script
       run: |
-        chmod +x $DIY_P1_SH
-        cd $SOURCE_NAME
-        \(GITHUB_WORKSPACE/\)DIY_P1_SH
+        chmod +x sh/op.sh
+        cd openwrt
+        $GITHUB_WORKSPACE/sh/op.sh
         cd ..
-        [ -e patch ] && cp -rf patch/nginx/luci.locations $SOURCE_NAME/feeds/packages/net/nginx/files-luci-support
-        [ -e patch ] && cp -rf patch/nginx/uci.conf.template $SOURCE_NAME/feeds/packages/net/nginx-util/files
+        [ -e patch ] && cp -rf patch/nginx/luci.locations openwrt/feeds/packages/net/nginx/files-luci-support
+        [ -e patch ] && cp -rf patch/nginx/uci.conf.template openwrt/feeds/packages/net/nginx-util/files
 
     - name: Use kenzok8 daede source packages
       run: |
-        rm -rf \(SOURCE_NAME/package/porxy/dae\)SOURCE_NAME/package/porxy/daed $SOURCE_NAME/package/porxy/luci-app-daede
+        rm -rf openwrt/package/porxy/dae openwrt/package/porxy/daed openwrt/package/porxy/luci-app-daede
         git clone --depth=1 https://github.com/kenzok8/openwrt-daede daede-src
-        mv daede-src/dae daede-src/daed daede-src/luci-app-daede $SOURCE_NAME/package/porxy/
+        mv daede-src/dae daede-src/daed daede-src/luci-app-daede openwrt/package/porxy/
         rm -rf daede-src
 
     - name: Load Aigo AGS21 eMMC config
       run: |
-        [ -e files ] && mv files $SOURCE_NAME/files
-        rm -f $SOURCE_NAME/files/etc/uci-defaults/98-install-daed-runfiles
-        cat <>$SOURCE_NAME/.config
+        [ -e files ] && mv files openwrt/files
+        rm -f openwrt/files/etc/uci-defaults/98-install-daed-runfiles
+        cat <>openwrt/.config
         CONFIG_TARGET_mediatek=y
         CONFIG_TARGET_mediatek_filogic=y
-        ${{ matrix.config }}
+        CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y
         EOF
 
-        [ -e config ] && cat config/config-common >> $SOURCE_NAME/.config
+        [ -e config ] && cat config/config-common >> openwrt/.config
 
-        cat <>$SOURCE_NAME/.config
+        cat <>openwrt/.config
         CONFIG_PACKAGE_luci-app-daede=y
         CONFIG_PACKAGE_luci-app-daede_daed=y
         # CONFIG_PACKAGE_luci-app-daede_dae is not set
@@ -181,7 +173,7 @@ jobs:
         # CONFIG_DAED_USE_VMLINUX_BTF is not set
         EOF
 
-        sed -i "s/192.168.1.1/\({{ github.event.inputs.OP_IP }}/"\)SOURCE_NAME/package/base-files/files/bin/config_generate
+        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
 
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
@@ -190,13 +182,13 @@ jobs:
               continue
               ;;
           esac
-          echo "CONFIG_PACKAGE_${plugin}=y" >> $SOURCE_NAME/.config
+          echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
         done
 
     - name: Download package sources
       id: package
       run: |
-        cd $SOURCE_NAME
+        cd openwrt
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -204,7 +196,7 @@ jobs:
 
     - name: BPF/LLVM early checkpoint
       run: |
-        cd $SOURCE_NAME
+        cd openwrt
         trap 'echo "::group::BPF checkpoint diagnostics"; find staging_dir -maxdepth 4 \(-path "*/toolchain-*" -o -name "libgcc_s.so*" -o -name "*.toolchain*"\) -print 2>/dev/null || true; find build_dir -maxdepth 3 \(-path "*/toolchain*" -o -path "*/bpf-headers*"\) -print 2>/dev/null || true; echo "::endgroup::"' ERR
         clang --version || true
         grep -E 'CONFIG_(BPF_TOOLCHAIN|USE_LLVM|HAS_BPF|SDK_LLVM|KERNEL_DEBUG_INFO|KERNEL_BPF|KERNEL_CGROUP_BPF|KERNEL_XDP|DAE.*BTF|DAE.*BPF_DEPENDS)' .config || true
@@ -216,14 +208,14 @@ jobs:
     - name: Compile firmware
       id: compile
       run: |
-        cd $SOURCE_NAME
+        cd openwrt
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || yes n | make -j1 || yes n | make -j1 V=s
 
     - name: Clean volatile Go module cache
       if: always()
       run: |
-        cd $SOURCE_NAME
+        cd openwrt
         rm -rf dl/go-mod-cache
 
     - name: Save build cache
@@ -231,14 +223,14 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: |
-          ${{ matrix.source }}/dl
-          ${{ matrix.source }}/staging_dir
-          ${{ matrix.source }}/build_dir/host
-          ${{ matrix.source }}/build_dir/hostpkg
-          ${{ matrix.source }}/build_dir/toolchain-*
-          ${{ matrix.source }}/bin/packages
-          ${{ matrix.source }}/bin/targets
-        key: \({{ matrix.source }}-\){{ matrix.device }}-build-cache-${{ github.run_id }}
+          openwrt/dl
+          openwrt/staging_dir
+          openwrt/build_dir/host
+          openwrt/build_dir/hostpkg
+          openwrt/build_dir/toolchain-*
+          openwrt/bin/packages
+          openwrt/bin/targets
+        key: openwrt-aigo-ags21-emmc-build-cache-${{ github.run_id }}
 
     - name: Show disk usage
       if: (!cancelled())
@@ -247,7 +239,7 @@ jobs:
     - name: Organize firmware
       id: organize
       run: |
-        cd $SOURCE_NAME/bin/targets/*/*
+        cd openwrt/bin/targets/*/*
         rm -rf packages
         rm -rf *.buildinfo
         rm -rf profiles.json
