@@ -1,4 +1,4 @@
-name: ags21
+name: s21
 
 on:
   workflow_dispatch:
