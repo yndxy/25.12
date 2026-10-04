@@ -69,7 +69,7 @@ jobs:
         git config --global user.email 'noreply@github.com'
         sudo timedatectl set-timezone 'Asia/Shanghai'
         sudo mkdir -p /workdir
-        sudo chown -R \((id -u):\)(id -g) /workdir
+        sudo chown -R runner:runner /workdir
         df -Th
 
     - name: Set variables
@@ -264,7 +264,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: \({{ env.release_tag }}-\){{ env.tag }}-aigo-ags21
+        tag_name: \({{ env.release_tag }}-\){{ env.tag }}-op-aigo-ags21
         files: ${{ env.FIRMWARE }}/*
         body: |
           ==================== Firmware Info =======================
