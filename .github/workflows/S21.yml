@@ -1,4 +1,4 @@
-name: op-ags21
+name: 22
 
 on:
   workflow_dispatch:
@@ -88,14 +88,22 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone https://github.com/shiyu1314/openwrt-source openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        git clone $REPO_URL $SOURCE_NAME
+        ln -sf /workdir/$SOURCE_NAME $GITHUB_WORKSPACE/$SOURCE_NAME
 
     - name: Checkout source tag
       run: |
-        cd openwrt
-        _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
-        git checkout $_release_tag
+        cd $SOURCE_NAME
+        case $REPO_BRANCH in
+          openwrt-25.12)
+            _release_tag=$(git tag --sort=taggerdate --list 'v25.*' | tail -1)
+            git checkout $_release_tag
+            ;;
+          *)
+            echo "Can't get local/upstream branch or tag"
+            exit 1
+            ;;
+        esac
         echo "release_tag=$_release_tag" >> $GITHUB_ENV
 
     - name: Restore build cache
@@ -103,22 +111,22 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: |
-          openwrt/dl
-          openwrt/staging_dir
-          openwrt/build_dir/host
-          openwrt/build_dir/hostpkg
-          openwrt/build_dir/toolchain-*
-          openwrt/bin/packages
-          openwrt/bin/targets
-        key: openwrt-aigo-ags21-emmc-build-cache-${{ github.run_id }}
+          ${{ matrix.source }}/dl
+          ${{ matrix.source }}/staging_dir
+          ${{ matrix.source }}/build_dir/host
+          ${{ matrix.source }}/build_dir/hostpkg
+          ${{ matrix.source }}/build_dir/toolchain-*
+          ${{ matrix.source }}/bin/packages
+          ${{ matrix.source }}/bin/targets
+        key: ${{ matrix.source }}-${{ matrix.device }}-build-cache-${{ github.run_id }}
         restore-keys: |
-          openwrt-aigo-ags21-emmc-build-cache-
-          openwrt-xr30-emmc-build-cache-
-          openwrt-mt7981-multi-build-cache-
+          ${{ matrix.source }}-${{ matrix.device }}-build-cache-
+          ${{ matrix.source }}-aigo-ags21-emmc-build-cache-
+          ${{ matrix.source }}-mt7981-multi-build-cache-
 
     - name: Validate toolchain cache
       run: |
-        cd openwrt
+        cd $SOURCE_NAME
         if [ -d staging_dir ] && ! find staging_dir -path '*/toolchain-*/lib/libgcc_s.so.*' | grep -q .; then
           echo "::warning::Restored toolchain cache is incomplete; rebuilding toolchain only."
           rm -rf staging_dir/toolchain-* build_dir/toolchain-* build_dir/target-*/toolchain
@@ -129,366 +137,66 @@ jobs:
     - name: Prepare feeds and patches
       run: |
         set -x
-        cd openwrt
+        cd $SOURCE_NAME
         [ -d ./staging_dir ] && find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1 || true
         ./scripts/feeds update -a
         cd ..
-        [ -e patch ] && cp -rf patch/diy/*.patch openwrt
-        [ -e patch ] && cp -rf patch/luci/*.patch openwrt/feeds/luci
+        [ -e patch ] && cp -rf patch/diy/*.patch $SOURCE_NAME
+        [ -e patch ] && cp -rf patch/luci/*.patch $SOURCE_NAME/feeds/luci
 
     - name: Run common custom script
       run: |
-        chmod +x sh/op.sh
-        cd openwrt
-        $GITHUB_WORKSPACE/sh/op.sh
+        chmod +x $DIY_P1_SH
+        cd $SOURCE_NAME
+        $GITHUB_WORKSPACE/$DIY_P1_SH
         cd ..
-        [ -e patch ] && cp -rf patch/nginx/luci.locations openwrt/feeds/packages/net/nginx/files-luci-support
-        [ -e patch ] && cp -rf patch/nginx/uci.conf.template openwrt/feeds/packages/net/nginx-util/files
+        [ -e patch ] && cp -rf patch/nginx/luci.locations $SOURCE_NAME/feeds/packages/net/nginx/files-luci-support
+        [ -e patch ] && cp -rf patch/nginx/uci.conf.template $SOURCE_NAME/feeds/packages/net/nginx-util/files
 
     - name: Use kenzok8 daede source packages
       run: |
-        rm -rf openwrt/package/porxy/dae openwrt/package/porxy/daed openwrt/package/porxy/luci-app-daede
+        rm -rf $SOURCE_NAME/package/porxy/dae $SOURCE_NAME/package/porxy/daed $SOURCE_NAME/package/porxy/luci-app-daede
         git clone --depth=1 https://github.com/kenzok8/openwrt-daede daede-src
-        mv daede-src/dae daede-src/daed daede-src/luci-app-daede openwrt/package/porxy/
+        mv daede-src/dae daede-src/daed daede-src/luci-app-daede $SOURCE_NAME/package/porxy/
         rm -rf daede-src
 
-    - name: Load Aigo AGS21 eMMC config & inject DTS
-      env:
-        CUSTOM_PLUGINS: ${{ github.event.inputs.CUSTOM_PLUGINS }}
-        OP_IP: ${{ github.event.inputs.OP_IP }}
+    - name: Load Aigo AGS21 eMMC config
       run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        import os
-        import shutil
+        [ -e files ] && mv files $SOURCE_NAME/files
+        rm -f $SOURCE_NAME/files/etc/uci-defaults/98-install-daed-runfiles
+        cat <<EOF >>$SOURCE_NAME/.config
+        CONFIG_TARGET_mediatek=y
+        CONFIG_TARGET_mediatek_filogic=y
+        ${{ matrix.config }}
+        EOF
 
-        # 1. 写入 AGS21 专属 DTS 文件
-        dts_path = Path("openwrt/target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
-        dts_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        ags21_dts_content = r"""// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-        /*
-         * Aigo AGS21 (MT7981, 1G RAM, 64G eMMC)
-         * Based on dailook's device tree (kiddin9/Kwrt)
-         */
+        [ -e config ] && cat config/config-common >> $SOURCE_NAME/.config
 
-        /dts-v1/;
-        #include <dt-bindings/gpio/gpio.h>
-        #include <dt-bindings/input/input.h>
-        #include <dt-bindings/leds/common.h>
+        cat <<EOF >>$SOURCE_NAME/.config
+        CONFIG_PACKAGE_luci-app-daede=y
+        CONFIG_PACKAGE_luci-app-daede_daed=y
+        # CONFIG_PACKAGE_luci-app-daede_dae is not set
+        CONFIG_PACKAGE_daed=y
+        CONFIG_DAED_USE_KERNEL_BTF=y
+        # CONFIG_DAED_USE_VMLINUX_BTF is not set
+        EOF
 
-        #include "mt7981.dtsi"
+        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" $SOURCE_NAME/package/base-files/files/bin/config_generate
 
-        / {
-            model = "Aigo AGS21";
-            compatible = "aigo,ags21", "mediatek,mt7981";
-
-            chosen {
-                bootargs = "root=PARTLABEL=rootfs rootwait rootfstype=squashfs,f2fs";
-                stdout-path = "serial0:115200n8";
-            };
-
-            aliases {
-                led-boot = &status_red_led;
-                led-failsafe = &status_red_led;
-                led-running = &status_blue_led;
-                led-upgrade = &status_blue_led;
-                serial0 = &uart0;
-            };
-
-            memory {
-                reg = <0 0x40000000 0 0x40000000>;
-            };
-
-            leds {
-                compatible = "gpio-leds";
-
-                status_red_led: led-0 {
-                    label = "red:status";
-                    gpios = <&pio 6 GPIO_ACTIVE_LOW>;
-                };
-
-                status_blue_led: led-1 {
-                    label = "blue:status";
-                    gpios = <&pio 4 GPIO_ACTIVE_LOW>;
-                };
-
-                internet_led: led-2 {
-                    label = "green:status";
-                    gpios = <&pio 29 GPIO_ACTIVE_LOW>;
-                };
-
-                wifi_led: led-3 {
-                    label = "white:status";
-                    gpios = <&pio 30 GPIO_ACTIVE_LOW>;
-                };
-            };
-
-            gpio-keys {
-                compatible = "gpio-keys";
-                reset {
-                    label = "reset";
-                    linux,code = <KEY_RESTART>;
-                    gpios = <&pio 1 GPIO_ACTIVE_LOW>;
-                };
-
-                mesh {
-                    label = "mesh";
-                    linux,code = <BTN_9>;
-                    gpios = <&pio 0 GPIO_ACTIVE_LOW>;
-                };
-            };
-        };
-
-        &uart0 {
-            status = "okay";
-        };
-
-        &watchdog {
-            status = "okay";
-        };
-
-        &mmc0 {
-            bus-width = <8>;
-            cap-mmc-highspeed;
-            max-frequency = <52000000>;
-            non-removable;
-            pinctrl-names = "default", "state_uhs";
-            pinctrl-0 = <&mmc0_pins_default>;
-            pinctrl-1 = <&mmc0_pins_uhs>;
-            vmmc-supply = <&reg_3p3v>;
-            status = "okay";
-
-            card@0 {
-                compatible = "mmc-card";
-                reg = <0>;
-
-                block {
-                    compatible = "block-device";
-
-                    partitions {
-                        block-partition-factory {
-                            partname = "factory";
-
-                            nvmem-layout {
-                                compatible = "fixed-layout";
-                                #address-cells = <1>;
-                                #size-cells = <1>;
-
-                                eeprom_factory_0: eeprom@0 {
-                                    reg = <0x0 0x1000>;
-                                };
-
-                                macaddr_factory_4: macaddr@4 {
-                                    compatible = "mac-base";
-                                    reg = <0x4 0x6>;
-                                    #nvmem-cell-cells = <1>;
-                                };
-
-                                macaddr_factory_24: macaddr@24 {
-                                    compatible = "mac-base";
-                                    reg = <0x24 0x6>;
-                                    #nvmem-cell-cells = <1>;
-                                };
-
-                                macaddr_factory_2a: macaddr@2a {
-                                    compatible = "mac-base";
-                                    reg = <0x2a 0x6>;
-                                    #nvmem-cell-cells = <1>;
-                                };
-
-                                macaddr_factory_30: macaddr@30 {
-                                    compatible = "mac-base";
-                                    reg = <0x30 0x6>;
-                                    #nvmem-cell-cells = <1>;
-                                };
-                            };
-                        };
-                    };
-                };
-            };
-        };
-
-        &eth {
-            status = "okay";
-
-            gmac0: mac@0 {
-                compatible = "mediatek,eth-mac";
-                reg = <0>;
-                phy-mode = "2500base-x";
-
-                nvmem-cells = <&macaddr_factory_2a 0>;
-                nvmem-cell-names = "mac-address";
-
-                fixed-link {
-                    speed = <2500>;
-                    full-duplex;
-                    pause;
-                };
-            };
-
-            gmac1: mac@1 {
-                compatible = "mediatek,eth-mac";
-                reg = <1>;
-                phy-mode = "gmii";
-                phy-handle = <&int_gbe_phy>;
-
-                nvmem-cells = <&macaddr_factory_24 0>;
-                nvmem-cell-names = "mac-address";
-            };
-        };
-
-        &mdio_bus {
-            switch: switch@1f {
-                compatible = "mediatek,mt7531";
-                reg = <31>;
-                reset-gpios = <&pio 39 GPIO_ACTIVE_HIGH>;
-                interrupt-controller;
-                #interrupt-cells = <1>;
-                interrupt-parent = <&pio>;
-                interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
-            };
-        };
-
-        &switch {
-            ports {
-                #address-cells = <1>;
-                #size-cells = <0>;
-
-                port@1 {
-                    reg = <1>;
-                    label = "lan1";
-                };
-
-                port@2 {
-                    reg = <2>;
-                    label = "lan2";
-                };
-
-                port@6 {
-                    reg = <6>;
-                    ethernet = <&gmac0>;
-                    phy-mode = "2500base-x";
-
-                    fixed-link {
-                        speed = <2500>;
-                        full-duplex;
-                        pause;
-                    };
-                };
-            };
-        };
-
-        &pio {
-            mmc0_pins_default: mmc0-pins-default {
-                mux {
-                    function = "flash";
-                    groups = "emmc_45";
-                };
-            };
-
-            mmc0_pins_uhs: mmc0-pins-uhs {
-                mux {
-                    function = "flash";
-                    groups = "emmc_45";
-                };
-            };
-        };
-
-        &wifi {
-            status = "okay";
-            nvmem-cells = <&eeprom_factory_0>;
-            nvmem-cell-names = "eeprom";
-
-            band@0 {
-                reg = <0>;
-                nvmem-cells = <&macaddr_factory_4 0>;
-                nvmem-cell-names = "mac-address";
-            };
-
-            band@1 {
-                reg = <1>;
-                nvmem-cells = <&macaddr_factory_30 0>;
-                nvmem-cell-names = "mac-address";
-            };
-        };
-        """
-        dts_path.write_text(ags21_dts_content)
-
-        # 2. 在 filogic.mk 中注册 aigo_ags21 设备镜像生成规则
-        filogic_mk = Path("openwrt/target/linux/mediatek/image/filogic.mk")
-        if filogic_mk.exists():
-            mk_content = filogic_mk.read_text()
-            if "Device/aigo_ags21" not in mk_content:
-                ags21_def = """
-define Device/aigo_ags21
-  DEVICE_VENDOR := Aigo
-  DEVICE_MODEL := AGS21
-  DEVICE_DTS := mt7981-aigo-ags21
-  DEVICE_DTS_DIR := $(DTS_DIR)
-  UBINIZE_OPTS := -E 5
-  BLOCKSIZE := 128k
-  PAGESIZE := 2048
-  IMAGES := sysupgrade.bin
-  IMAGE/sysupgrade.bin := append-kernel | fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | append-metadata
-  DEVICE_PACKAGES := kmod-usb-ohci kmod-usb2 kmod-mmc
-endef
-TARGET_DEVICES += aigo_ags21
-"""
-                filogic_mk.write_text(mk_content + ags21_def)
-                print("Successfully registered aigo_ags21 in filogic.mk")
-
-        # 3. 写入 .config 配置
-        config_path = Path("openwrt/.config")
-        lines = [
-            "CONFIG_TARGET_mediatek=y",
-            "CONFIG_TARGET_mediatek_filogic=y",
-            "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y",
-            "CONFIG_PACKAGE_luci-app-daede=y",
-            "CONFIG_PACKAGE_luci-app-daede_daed=y",
-            "# CONFIG_PACKAGE_luci-app-daede_dae is not set",
-            "CONFIG_PACKAGE_daed=y",
-            "CONFIG_DAED_USE_KERNEL_BTF=y",
-            "# CONFIG_DAED_USE_VMLINUX_BTF is not set"
-        ]
-
-        common_config = Path("config/config-common")
-        if common_config.exists():
-            lines.append(common_config.read_text())
-
-        custom_plugins = os.environ.get("CUSTOM_PLUGINS", "").split()
-        for plugin in custom_plugins:
-            if plugin not in ["luci-app-daed", "luci-i18n-daed-zh-cn", "luci-app-daede", "daed", "dae"]:
-                lines.append(f"CONFIG_PACKAGE_{plugin}=y")
-
-        config_path.write_text("\n".join(lines) + "\n")
-
-        # 4. 修改默认 IP
-        ip_val = os.environ.get("OP_IP", "192.168.2.1")
-        gen_path = Path("openwrt/package/base-files/files/bin/config_generate")
-        if gen_path.exists():
-            text = gen_path.read_text()
-            text = text.replace("192.168.1.1", ip_val)
-            gen_path.write_text(text)
-
-        # 5. 复制 files 并清理冲突脚本
-        files_dir = Path("files")
-        if files_dir.exists():
-            dest_files = Path("openwrt/files")
-            if dest_files.exists():
-                shutil.rmtree(dest_files)
-            shutil.copytree(files_dir, dest_files)
-            uci_default = dest_files.joinpath("etc/uci-defaults/98-install-daed-runfiles")
-            if uci_default.exists():
-                uci_default.unlink()
-
-        print("Aigo AGS21 configuration and DTS injected successfully via Python!")
-        PY
+        IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
+        for plugin in "${plugins[@]}"; do
+          case "$plugin" in
+            luci-app-daed|luci-i18n-daed-zh-cn|luci-app-daede|daed|dae)
+              continue
+              ;;
+          esac
+          echo "CONFIG_PACKAGE_${plugin}=y" >> $SOURCE_NAME/.config
+        done
 
     - name: Download package sources
       id: package
       run: |
-        cd openwrt
+        cd $SOURCE_NAME
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -496,7 +204,7 @@ TARGET_DEVICES += aigo_ags21
 
     - name: BPF/LLVM early checkpoint
       run: |
-        cd openwrt
+        cd $SOURCE_NAME
         trap 'echo "::group::BPF checkpoint diagnostics"; find staging_dir -maxdepth 4 \( -path "*/toolchain-*" -o -name "libgcc_s.so*" -o -name "*.toolchain*" \) -print 2>/dev/null || true; find build_dir -maxdepth 3 \( -path "*/toolchain*" -o -path "*/bpf-headers*" \) -print 2>/dev/null || true; echo "::endgroup::"' ERR
         clang --version || true
         grep -E 'CONFIG_(BPF_TOOLCHAIN|USE_LLVM|HAS_BPF|SDK_LLVM|KERNEL_DEBUG_INFO|KERNEL_BPF|KERNEL_CGROUP_BPF|KERNEL_XDP|DAE.*BTF|DAE.*BPF_DEPENDS)' .config || true
@@ -508,14 +216,14 @@ TARGET_DEVICES += aigo_ags21
     - name: Compile firmware
       id: compile
       run: |
-        cd openwrt
+        cd $SOURCE_NAME
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || yes n | make -j1 || yes n | make -j1 V=s
 
     - name: Clean volatile Go module cache
       if: always()
       run: |
-        cd openwrt
+        cd $SOURCE_NAME
         rm -rf dl/go-mod-cache
 
     - name: Save build cache
@@ -523,14 +231,14 @@ TARGET_DEVICES += aigo_ags21
       uses: actions/cache/save@v5
       with:
         path: |
-          openwrt/dl
-          openwrt/staging_dir
-          openwrt/build_dir/host
-          openwrt/build_dir/hostpkg
-          openwrt/build_dir/toolchain-*
-          openwrt/bin/packages
-          openwrt/bin/targets
-        key: openwrt-aigo-ags21-emmc-build-cache-${{ github.run_id }}
+          ${{ matrix.source }}/dl
+          ${{ matrix.source }}/staging_dir
+          ${{ matrix.source }}/build_dir/host
+          ${{ matrix.source }}/build_dir/hostpkg
+          ${{ matrix.source }}/build_dir/toolchain-*
+          ${{ matrix.source }}/bin/packages
+          ${{ matrix.source }}/bin/targets
+        key: ${{ matrix.source }}-${{ matrix.device }}-build-cache-${{ github.run_id }}
 
     - name: Show disk usage
       if: (!cancelled())
@@ -539,7 +247,7 @@ TARGET_DEVICES += aigo_ags21
     - name: Organize firmware
       id: organize
       run: |
-        cd openwrt/bin/targets/*/*
+        cd $SOURCE_NAME/bin/targets/*/*
         rm -rf packages
         rm -rf *.buildinfo
         rm -rf profiles.json
