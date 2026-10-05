@@ -1,16 +1,5 @@
 #!/bin/bash
 
-function git_sparse_clone() {
-  local branch="$1"
-  local repourl="$2"
-  shift 2
-  git clone --depth=1 -b "\(branch" --single-branch --filter=blob:none --sparse "\)repourl"
-  local repodir=\((echo "\)repourl" | awk -F '/' '{print $(NF)}')
-  cd "\(repodir" && git sparse-checkout set "\)@"
-  mv -f "$@" ../
-  cd .. && rm -rf "$repodir"
-}
-
 set -x
 
 apply_patch_once() {
@@ -233,4 +222,48 @@ sed -i 's/cheaper = 1/cheaper = 2/g' feeds/packages/net/uwsgi/files-luci-support
 # rpcd & luci-compat
 sed -i 's/option timeout 30/option timeout 60/g' package/system/rpcd/files/rpcd.config
 sed -i 's#20) \* 1000#60) \* 1000#g' feeds/luci/modules/luci-base/htdocs/luci-static/resources/rpc.js
-sed -i '/
+# luci-compat - remove extra line breaks from description
+sed -i '/<br \/>/d' feeds/luci/modules/luci-compat/luasrc/view/cbi/full_valuefooter.htm
+
+# mosdns
+find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
+find ./ | grep Makefile | grep mosdns | xargs rm -f
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+
+# Lucky (只拉取指定分支)
+rm -rf package/luci-app-lucky
+git clone https://github.com/sirpdboy/luci-app-lucky.git package/luci-app-lucky
+
+# AdGuardHome
+rm -rf package/luci-app-adguardhome
+git clone https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luci-app-adguardhome
+
+#golang 26.x
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+
+./scripts/feeds update -a
+./scripts/feeds install -a
+
+sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
+
+
+sudo rm -rf package/base-files/files/etc/banner
+
+sed -i "s/%D %V %C/%D %V $(TZ=UTC-8 date +%Y.%m.%d)/" package/base-files/files/etc/openwrt_release
+
+sed -i "s/%R/by $OP_author/" package/base-files/files/etc/openwrt_release
+
+date=$(date +"%Y-%m-%d")
+
+
+echo "                                                    " >> package/base-files/files/etc/banner
+echo "  _______                     ________        __" >> package/base-files/files/etc/banner
+echo " |       |.-----.-----.-----.|  |  |  |.----.|  |_" >> package/base-files/files/etc/banner
+echo " |   -   ||  _  |  -__|     ||  |  |  ||   _||   _|" >> package/base-files/files/etc/banner
+echo " |_______||   __|_____|__|__||________||__|  |____|" >> package/base-files/files/etc/banner
+echo "          |__|" >> package/base-files/files/etc/banner
+echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
+echo "         %D ${date} by $OP_author                     " >> package/base-files/files/etc/banner
+echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
