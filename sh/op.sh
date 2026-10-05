@@ -165,36 +165,35 @@ filogic_mk = Path("target/linux/mediatek/image/filogic.mk")
 if filogic_mk.exists():
     content = filogic_mk.read_text()
     if "Device/aigo_ags21" not in content:
-        snippet = """
-define Device/aigo_ags21
-  DEVICE_VENDOR := Aigo
-  DEVICE_MODEL := AGS21
-  DEVICE_DTS := mt7981b-aigo-ags21
-  DEVICE_DTS_DIR := ../dts
-  SUPPORTED_DEVICES := aigo,ags21
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount coremark blkid fdisk f2fsck mkf2fs kmod-mmc mmc-utils
-  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
-endef
-TARGET_DEVICES += aigo_ags21
-
-define Device/aigo_ags21-nand
-  DEVICE_VENDOR := Aigo
-  DEVICE_MODEL := AGS21 NAND
-  DEVICE_DTS := mt7981b-aigo-ags21-nand
-  DEVICE_DTS_DIR := ../dts
-  SUPPORTED_DEVICES := aigo,ags21-nand
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
-  UBINIZE_OPTS := -E 5
-  BLOCKSIZE := 128k
-  PAGESIZE := 2048
-  IMAGE_SIZE := 116736k
-  KERNEL_IN_UBI := 1  
-  IMAGES += factory.bin
-  IMAGE/factory.bin := append-ubi | check-size $$(IMAGE_SIZE)
-  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
-endef
-TARGET_DEVICES += aigo_ags21-nand
-"""
+        snippet = "\n" \
+            "define Device/aigo_ags21\n" \
+            "  DEVICE_VENDOR := Aigo\n" \
+            "  DEVICE_MODEL := AGS21\n" \
+            "  DEVICE_DTS := mt7981b-aigo-ags21\n" \
+            "  DEVICE_DTS_DIR := ../dts\n" \
+            "  SUPPORTED_DEVICES := aigo,ags21\n" \
+            "  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount coremark blkid fdisk f2fsck mkf2fs kmod-mmc mmc-utils\n" \
+            "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata\n" \
+            "endef\n" \
+            "TARGET_DEVICES += aigo_ags21\n" \
+            "\n" \
+            "define Device/aigo_ags21-nand\n" \
+            "  DEVICE_VENDOR := Aigo\n" \
+            "  DEVICE_MODEL := AGS21 NAND\n" \
+            "  DEVICE_DTS := mt7981b-aigo-ags21-nand\n" \
+            "  DEVICE_DTS_DIR := ../dts\n" \
+            "  SUPPORTED_DEVICES := aigo,ags21-nand\n" \
+            "  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware\n" \
+            "  UBINIZE_OPTS := -E 5\n" \
+            "  BLOCKSIZE := 128k\n" \
+            "  PAGESIZE := 2048\n" \
+            "  IMAGE_SIZE := 116736k\n" \
+            "  KERNEL_IN_UBI := 1\n" \
+            "  IMAGES += factory.bin\n" \
+            "  IMAGE/factory.bin := append-ubi | check-size $$(IMAGE_SIZE)\n" \
+            "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata\n" \
+            "endef\n" \
+            "TARGET_DEVICES += aigo_ags21-nand\n"
         filogic_mk.write_text(content + snippet)
         print("aigo_ags21 and aigo_ags21-nand registered in filogic.mk successfully.")
 
