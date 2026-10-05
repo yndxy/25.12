@@ -341,43 +341,6 @@ git clone https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luc
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 
-python3 - << 'PY'
-import os
-from pathlib import Path
-
-# 1. 复制 DTS 文件
-workspace = os.environ.get("GITHUB_WORKSPACE", ".")
-dts_src = Path(workspace) / "patch/mt7981-aigo-ags21.dts"
-dts_dst = Path("target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
-if dts_src.exists():
-    dts_dst.parent.mkdir(parents=True, exist_ok=True)
-    dts_dst.write_bytes(dts_src.read_bytes())
-    print("Aigo AGS21 DTS injected successfully.")
-
-# 2. 注册 filogic.mk 规则
-filogic_mk = Path("target/linux/mediatek/image/filogic.mk")
-if filogic_mk.exists():
-    content = filogic_mk.read_text()
-    if "Device/aigo_ags21" not in content:
-        snippet = """
-define Device/aigo_ags21
-  DEVICE_VENDOR := Aigo
-  DEVICE_MODEL := AGS21
-  DEVICE_DTS := mt7981-aigo-ags21
-  DEVICE_DTS_DIR := $(DTS_DIR)
-  UBINIZE_OPTS := -E 5
-  BLOCKSIZE := 128k
-  PAGESIZE := 2048
-  IMAGES := sysupgrade.bin
-  IMAGE/sysupgrade.bin := append-kernel | fit gzip \((KDIR)/image-\)(firstword $(DEVICE_DTS)).dtb | append-metadata
-  DEVICE_PACKAGES := kmod-usb-ohci kmod-usb2 kmod-mmc
-endef
-TARGET_DEVICES += aigo_ags21
-"""
-        filogic_mk.write_text(content + snippet)
-        print("aigo_ags21 registered in filogic.mk successfully.")
-PY
-
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
