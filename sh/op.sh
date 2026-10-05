@@ -161,6 +161,33 @@ if dts_src.exists():
     dts_dst.write_bytes(dts_src.read_bytes())
     print("Aigo AGS21 DTS injected successfully.")
 
+# ==========================================
+# Aigo AGS21 DTS 复制与 filogic.mk 注册
+# ==========================================
+python3 - << 'PY'
+import os
+from pathlib import Path
+
+workspace = os.environ.get("GITHUB_WORKSPACE", ".")
+
+# 1. 复制 eMMC 版本的 DTS
+dts_src = Path(workspace) / "patch/mt7981b-aigo-ags21.dts"
+dts_dst = Path("target/linux/mediatek/dts/mt7981b-aigo-ags21.dts")
+if dts_src.exists():
+    dts_dst.parent.mkdir(parents=True, exist_ok=True)
+    dts_dst.write_bytes(dts_src.read_bytes())
+    print("mt7981b-aigo-ags21.dts copied successfully.")
+else:
+    print("WARNING: patch/mt7981b-aigo-ags21.dts not found in workspace!")
+
+# 2. 复制 NAND 版本的 DTS（可选）
+dts_nand_src = Path(workspace) / "patch/mt7981b-aigo-ags21-nand.dts"
+dts_nand_dst = Path("target/linux/mediatek/dts/mt7981b-aigo-ags21-nand.dts")
+if dts_nand_src.exists():
+    dts_nand_dst.write_bytes(dts_nand_src.read_bytes())
+    print("mt7981b-aigo-ags21-nand.dts copied successfully.")
+
+# 3. 注册 filogic.mk
 filogic_mk = Path("target/linux/mediatek/image/filogic.mk")
 if filogic_mk.exists():
     content = filogic_mk.read_text()
@@ -196,6 +223,7 @@ if filogic_mk.exists():
             "TARGET_DEVICES += aigo_ags21-nand\n"
         filogic_mk.write_text(content + snippet)
         print("aigo_ags21 and aigo_ags21-nand registered in filogic.mk successfully.")
+PY
 
 # rust
 RUST_VERSION=1.95.0
