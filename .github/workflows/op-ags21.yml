@@ -159,9 +159,9 @@ jobs:
         CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y
         EOF
 
-        [ -e config ] && cat config/config-common >> openwrt/.config
+        [ -e config ] && cat config/config-common >> $SOURCE_NAME/.config
 
-        cat <>openwrt/.config
+        cat <<EOF >>$SOURCE_NAME/.config
         CONFIG_PACKAGE_luci-app-daede=y
         CONFIG_PACKAGE_luci-app-daede_daed=y
         # CONFIG_PACKAGE_luci-app-daede_dae is not set
@@ -170,7 +170,7 @@ jobs:
         # CONFIG_DAED_USE_VMLINUX_BTF is not set
         EOF
 
-        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
+        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" $SOURCE_NAME/package/base-files/files/bin/config_generate
 
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
@@ -179,7 +179,7 @@ jobs:
               continue
               ;;
           esac
-          echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
+          echo "CONFIG_PACKAGE_${plugin}=y" >> $SOURCE_NAME/.config
         done
 
     - name: Download package sources
