@@ -169,20 +169,34 @@ if filogic_mk.exists():
 define Device/aigo_ags21
   DEVICE_VENDOR := Aigo
   DEVICE_MODEL := AGS21
-  DEVICE_DTS := mt7981-aigo-ags21
-  DEVICE_DTS_DIR := $(DTS_DIR)
+  DEVICE_DTS := mt7981b-aigo-ags21
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := aigo,ags21
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount coremark blkid fdisk f2fsck mkf2fs kmod-mmc mmc-utils
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+endef
+TARGET_DEVICES += aigo_ags21
+
+define Device/aigo_ags21-nand
+  DEVICE_VENDOR := Aigo
+  DEVICE_MODEL := AGS21 NAND
+  DEVICE_DTS := mt7981b-aigo-ags21-nand
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := aigo,ags21-nand
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
   PAGESIZE := 2048
-  IMAGES := sysupgrade.bin
-  IMAGE/sysupgrade.bin := append-kernel | fit gzip \((KDIR)/image-\)(firstword $(DEVICE_DTS)).dtb | append-metadata
-  DEVICE_PACKAGES := kmod-usb-ohci kmod-usb2 kmod-mmc
+  IMAGE_SIZE := 116736k
+  KERNEL_IN_UBI := 1  
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-ubi | check-size $$(IMAGE_SIZE)
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
-TARGET_DEVICES += aigo_ags21
+TARGET_DEVICES += aigo_ags21-nand
 """
         filogic_mk.write_text(content + snippet)
-        print("aigo_ags21 registered in filogic.mk successfully.")
-PY
+        print("aigo_ags21 and aigo_ags21-nand registered in filogic.mk successfully.")
 
 # rust
 RUST_VERSION=1.95.0
