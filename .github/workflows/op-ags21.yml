@@ -229,25 +229,22 @@ jobs:
       if: (!cancelled())
       run: df -hT
 
-   - name: Organize firmware
+    - name: Organize 
       id: organize
       run: |
-        echo "=== 正在全局寻找生成的固件文件 ==="
-        find openwrt/bin/targets/ -type f
-        
-        # 切换到 mediatek 目录看一下具体结构
-        cd openwrt/bin/targets/mediatek/* || cd openwrt/bin/targets/*/*
-        echo "当前所在固件目录: $PWD"
-        ls -la
-        
-        # 只清理不需要的打包中间文件，保留 bin/tar.gz/img 等产物
-        rm -rf packages || true
-        rm -rf *.buildinfo || true
-        rm -rf profiles.json || true
-        rm -rf *.manifest || true
-        
-        echo "firmware_path=\(PWD/*" >>\)GITHUB_ENV
-        
+        cd openwrt/bin/targets/mediatek/filogic
+        rm -rf packages
+        rm -rf *.buildinfo
+        rm -rf profiles.json
+        rm -rf *.manifest
+        rm -rf *.itb
+        rm -rf *bl2.bin
+        rm -rf *kernel.bin
+        rm -rf *.sha
+        rm -rf sha256sums
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "firmware_path=$PWD/*" >> $GITHUB_ENV
+
     - name: Upload firmware to Releases
       uses: softprops/action-gh-release@v3
       env:
