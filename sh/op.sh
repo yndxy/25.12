@@ -308,12 +308,3 @@ echo "          |__|" >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
 echo "         %D ${date} by $OP_author                     " >> package/base-files/files/etc/banner
 echo " -----------------------------------------------------" >> package/base-files/files/etc/banner
-
-# ==========================================
-# 强制确保目标设备配置写入 .config
-# ==========================================
-echo "=== 正在强制写入 Aigo AGS21 设备配置 ==="
-echo "CONFIG_TARGET_mediatek=y" >> .config
-echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
-echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y" >> .config
-make defconfig
