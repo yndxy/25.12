@@ -250,6 +250,7 @@ jobs:
         rm -rf *.manifest || true
         
         echo "firmware_path=\(PWD/*" >>\)GITHUB_ENV
+        
     - name: Upload firmware to Releases
       uses: softprops/action-gh-release@v3
       env:
