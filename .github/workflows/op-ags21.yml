@@ -229,10 +229,10 @@ jobs:
       if: (!cancelled())
       run: df -hT
 
-    - name: Organize firmware
+    - name: Organize 
       id: organize
       run: |
-        cd openwrt/bin/targets/*/*
+        cd openwrt/bin/targets/mediatek/filogic
         rm -rf packages
         rm -rf *.buildinfo
         rm -rf profiles.json
@@ -242,8 +242,8 @@ jobs:
         rm -rf *kernel.bin
         rm -rf *.sha
         rm -rf sha256sums
-        echo "FIRMWARE=\(PWD" >>\)GITHUB_ENV
-        echo "firmware_path=\(PWD/*" >>\)GITHUB_ENV
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "firmware_path=$PWD/*" >> $GITHUB_ENV
 
     - name: Upload firmware to Releases
       uses: softprops/action-gh-release@v3
