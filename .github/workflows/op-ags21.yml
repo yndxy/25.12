@@ -199,11 +199,17 @@ jobs:
         make package/kernel/bpf-headers/compile V=s || yes n | make package/kernel/bpf-headers/compile V=s
 
     - name: Compile firmware
-      id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || yes n | make -j1 || yes n | make -j1 V=s
+        
+        # 强制将 Aigo AGS21 写入编译配置，确保镜像必定生成
+        echo "CONFIG_TARGET_mediatek=y" >> .config
+        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
+        echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y" >> .config
+        make defconfig
+        
+        # 开始编译（优先多线程，失败时自动降级单线程打印详细日志）
+        make -j$(nproc) || make -j1 V=s
 
     - name: Clean volatile Go module cache
       if: always()
