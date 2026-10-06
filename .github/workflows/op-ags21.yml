@@ -206,8 +206,6 @@ jobs:
         echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y" >> .config
         make defconfig
         yes '' | make oldconfig
-        
-        # 开始编译
         make -j$(nproc) || make -j1 V=s
 
     - name: Clean volatile Go module cache
