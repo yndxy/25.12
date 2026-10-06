@@ -243,19 +243,20 @@ jobs:
         rm -rf *.sha
         rm -rf sha256sums
         echo "FIRMWARE=\(PWD" >>\)GITHUB_ENV
+        echo "firmware_path=\(PWD/*" >>\)GITHUB_ENV
 
     - name: Upload firmware to Releases
       uses: softprops/action-gh-release@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: \({{ env.release_tag }}-\){{ env.tag }}-op-aigo-ags21
-        files: ${{ env.FIRMWARE }}/*
+        tag_name: v25.12-${{ env.tag }}-aigo-ags21
+        files: ${{ env.firmware_path }}
         body: |
           ==================== Firmware Info =======================
           Workflow: op-aigo-ags21
           Device: Aigo AGS21 eMMC
-          Branch: ${{ env.release_tag }}
+          Branch: openwrt-25.12
           Static IP: ${{ github.event.inputs.OP_IP }}
           Extra packages: ${{ github.event.inputs.CUSTOM_PLUGINS }}
           daed source: kenzok8/openwrt-daede
