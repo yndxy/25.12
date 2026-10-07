@@ -147,82 +147,62 @@ done
 popd
 
 # ==========================================
-# Aigo AGS21 eMMC 机型自动注入与注册
+# Aigo AGS21 DTS 注入与 filogic.mk 自动注册脚本
 # ==========================================
+
 python3 - << 'PY'
 import os
 from pathlib import Path
 
-workspace = os.environ.get("GITHUB_WORKSPACE", ".")
-dts_src = Path(workspace) / "patch/mt7981-aigo-ags21.dts"
-dts_dst = Path("target/linux/mediatek/dts/mt7981-aigo-ags21.dts")
-if dts_src.exists():
-    dts_dst.parent.mkdir(parents=True, exist_ok=True)
-    dts_dst.write_bytes(dts_src.read_bytes())
-    print("Aigo AGS21 DTS injected successfully.")
+workspace = Path(os.environ.get("GITHUB_WORKSPACE", "."))
+dts_target_dir = Path("target/linux/mediatek/dts")
+dts_target_dir.mkdir(parents=True, exist_ok=True)
 
-# ==========================================
-# Aigo AGS21 DTS 复制与 filogic.mk 注册
-# ==========================================
-python3 - << 'PY'
-import os
-from pathlib import Path
+# 1. 复制 eMMC 版本的 DTS (带 b)
+emmc_src = workspace / "patch" / "mt7981b-aigo-ags21.dts"
+emmc_dst = dts_target_dir / "mt7981b-aigo-ags21.dts"
 
-workspace = os.environ.get("GITHUB_WORKSPACE", ".")
-
-# 1. 复制 eMMC 版本的 DTS
-dts_src = Path(workspace) / "patch/mt7981b-aigo-ags21.dts"
-dts_dst = Path("target/linux/mediatek/dts/mt7981b-aigo-ags21.dts")
-if dts_src.exists():
-    dts_dst.parent.mkdir(parents=True, exist_ok=True)
-    dts_dst.write_bytes(dts_src.read_bytes())
-    print("mt7981b-aigo-ags21.dts copied successfully.")
+if emmc_src.exists():
+    emmc_dst.write_bytes(emmc_src.read_bytes())
+    print("[OK] eMMC DTS injected: mt7981b-aigo-ags21.dts")
 else:
-    print("WARNING: patch/mt7981b-aigo-ags21.dts not found in workspace!")
+    print(f"[WARNING] eMMC DTS source not found at: {emmc_src}")
 
-# 2. 复制 NAND 版本的 DTS（可选）
-dts_nand_src = Path(workspace) / "patch/mt7981b-aigo-ags21-nand.dts"
-dts_nand_dst = Path("target/linux/mediatek/dts/mt7981b-aigo-ags21-nand.dts")
-if dts_nand_src.exists():
-    dts_nand_dst.write_bytes(dts_nand_src.read_bytes())
-    print("mt7981b-aigo-ags21-nand.dts copied successfully.")
+# 2. 复制 NAND 版本的 DTS（可选，带 b）
+nand_src = workspace / "patch" / "mt7981b-aigo-ags21-nand.dts"
+nand_dst = dts_target_dir / "mt7981b-aigo-ags21-nand.dts"
+
+if nand_src.exists():
+    nand_dst.write_bytes(nand_src.read_bytes())
+    print("[OK] NAND DTS injected: mt7981b-aigo-ags21-nand.dts")
 
 # 3. 注册 filogic.mk
 filogic_mk = Path("target/linux/mediatek/image/filogic.mk")
 if filogic_mk.exists():
     content = filogic_mk.read_text()
+    modified = False
+    
     if "Device/aigo_ags21" not in content:
-        snippet = "\n" \
-            "define Device/aigo_ags21\n" \
-            "  DEVICE_VENDOR := Aigo\n" \
-            "  DEVICE_MODEL := AGS21\n" \
-            "  DEVICE_DTS := mt7981b-aigo-ags21\n" \
-            "  DEVICE_DTS_DIR := ../dts\n" \
-            "  SUPPORTED_DEVICES := aigo,ags21\n" \
-            "  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount coremark blkid fdisk f2fsck mkf2fs kmod-mmc mmc-utils\n" \
-            "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata\n" \
-            "endef\n" \
-            "TARGET_DEVICES += aigo_ags21\n" \
-            "\n" \
-            "define Device/aigo_ags21-nand\n" \
-            "  DEVICE_VENDOR := Aigo\n" \
-            "  DEVICE_MODEL := AGS21 NAND\n" \
-            "  DEVICE_DTS := mt7981b-aigo-ags21-nand\n" \
-            "  DEVICE_DTS_DIR := ../dts\n" \
-            "  SUPPORTED_DEVICES := aigo,ags21-nand\n" \
-            "  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware\n" \
-            "  UBINIZE_OPTS := -E 5\n" \
-            "  BLOCKSIZE := 128k\n" \
-            "  PAGESIZE := 2048\n" \
-            "  IMAGE_SIZE := 116736k\n" \
-            "  KERNEL_IN_UBI := 1\n" \
-            "  IMAGES += factory.bin\n" \
-            "  IMAGE/factory.bin := append-ubi | check-size $$(IMAGE_SIZE)\n" \
-            "  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata\n" \
-            "endef\n" \
-            "TARGET_DEVICES += aigo_ags21-nand\n"
-        filogic_mk.write_text(content + snippet)
-        print("aigo_ags21 and aigo_ags21-nand registered in filogic.mk successfully.")
+        emmc_snippet = """
+define Device/aigo_ags21
+  DEVICE_VENDOR := Aigo
+  DEVICE_MODEL := AGS21
+  DEVICE_DTS := mt7981b-aigo-ags21
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := aigo,ags21
+  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount coremark blkid fdisk f2fsck mkf2fs kmod-mmc mmc-utils
+  IMAGES := sysupgrade.bin
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+endef
+TARGET_DEVICES += aigo_ags21
+"""
+        content += emmc_snippet
+        modified = True
+        print("[OK] Registered Device/aigo_ags21 in filogic.mk")
+        
+    if modified:
+        filogic_mk.write_text(content)
+        print("[SUCCESS] filogic.mk updated.")
 PY
 
 # rust
