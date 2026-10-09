@@ -265,12 +265,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-xr30
+        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-s21
         files: ${{ env.FIRMWARE }}/*
         body: |
           ==================== Firmware Info =======================
-          Workflow: op-xr30
-          Device: XR30 eMMC
+          Workflow: op-s21
+          Device: s21
           Branch: ${{ env.release_tag }}
           Static IP: ${{ github.event.inputs.OP_IP }}
           Extra packages: ${{ github.event.inputs.CUSTOM_PLUGINS }}
