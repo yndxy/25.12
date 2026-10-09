@@ -145,7 +145,7 @@ jobs:
         [ -e patch ] && cp -rf patch/diy/*.patch $SOURCE_NAME
         [ -e patch ] && cp -rf patch/luci/*.patch $SOURCE_NAME/feeds/luci
 
-   - name: Run common custom script
+    - name: Run common custom script
       run: |
         chmod +x $DIY_P1_SH
         cd $SOURCE_NAME
