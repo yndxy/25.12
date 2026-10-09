@@ -33,7 +33,7 @@ define Device/aigo_ags21
 	DEVICE_MODEL := AGS21
 	DEVICE_DTS := mt7981b-aigo-ags21
 	DEVICE_DTS_DIR := ../dts
-	DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware coremark blkid blockdev fdisk f2fsck mkf2fs kmod-mmc mmc-utils automount
+	DEVICE_PACKAGES := f2fsck mkf2fs kmod-mmc mmc-utils automount
 	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
 	KERNEL_INITRAMFS := kernel-bin | lzma | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
