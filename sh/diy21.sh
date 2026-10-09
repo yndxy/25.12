@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEVICE_DIR="${SCRIPT_DIR}/aigo-ags21"
+# 修改这里，将目录指向 patch/aigo-ags21
+DEVICE_DIR="${SCRIPT_DIR}/patch/aigo-ags21"
 DTS_SRC="${DEVICE_DIR}/mt7981b-aigo-ags21.dts"
 DTS_DST="target/linux/mediatek/dts/mt7981b-aigo-ags21.dts"
 FILOGIC_MK="target/linux/mediatek/image/filogic.mk"
@@ -32,15 +33,15 @@ if ! grep -q 'define Device/aigo_ags21' "$FILOGIC_MK"; then
 	cat >> "$FILOGIC_MK" << 'EOF'
 
 define Device/aigo_ags21
-  DEVICE_VENDOR := Aigo
-  DEVICE_MODEL := AGS21
-  DEVICE_DTS := mt7981b-aigo-ags21
-  DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware coremark blkid blockdev fdisk f2fsck mkf2fs kmod-mmc mmc-utils automount
-  KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
-  KERNEL_INITRAMFS := kernel-bin | lzma | \
- fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
-  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+	DEVICE_VENDOR := Aigo
+	DEVICE_MODEL := AGS21
+	DEVICE_DTS := mt7981b-aigo-ags21
+	DEVICE_DTS_DIR := ../dts
+	DEVICE_PACKAGES := kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware coremark blkid blockdev fdisk f2fsck mkf2fs kmod-mmc mmc-utils automount
+	KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
+	KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 64k
+	IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += aigo_ags21
 EOF
