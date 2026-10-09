@@ -82,7 +82,7 @@ jobs:
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         echo "DEVICE_NAME=${{ matrix.device }}" >> $GITHUB_ENV
         echo "SOURCE_NAME=${{ matrix.source }}" >> $GITHUB_ENV
-        echo "REPO_URL=https://github.com/shiyu1314/openwrt-source" >> $GITHUB_ENV
+        echo "REPO_URL=https://github.com/yndxy/openwrt-source" >> $GITHUB_ENV
         echo "REPO_BRANCH=openwrt-25.12" >> $GITHUB_ENV
 
     - name: Clone source
