@@ -24,20 +24,19 @@ permissions:
 
 env:
   DIY_P1_SH: sh/op.sh
-  DIY_P2_SH: sh/diy21.sh
 
 jobs:
   build_firmware:
-    name: build Aigo AGS21 eMMC with kenzok8 daede
+    name: build XR30 eMMC with kenzok8 daede
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        device: ["aigo-ags21-emmc"]
+        device: ["xr30-emmc-daede"]
         source: ["openwrt"]
         include:
-          - device: "aigo-ags21-emmc"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y"
+          - device: "xr30-emmc-daede"
+            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"
 
     steps:
     - name: Checkout
@@ -154,13 +153,6 @@ jobs:
         [ -e patch ] && cp -rf patch/nginx/luci.locations $SOURCE_NAME/feeds/packages/net/nginx/files-luci-support
         [ -e patch ] && cp -rf patch/nginx/uci.conf.template $SOURCE_NAME/feeds/packages/net/nginx-util/files
 
-    - name: Run DIY_P2 custom script
-      run: |
-        cd $SOURCE_NAME
-        chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
-        $GITHUB_WORKSPACE/$DIY_P2_SH
-        cd ..
-
     - name: Use kenzok8 daede source packages
       run: |
         rm -rf $SOURCE_NAME/package/porxy/dae $SOURCE_NAME/package/porxy/daed $SOURCE_NAME/package/porxy/luci-app-daede
@@ -168,7 +160,7 @@ jobs:
         mv daede-src/dae daede-src/daed daede-src/luci-app-daede $SOURCE_NAME/package/porxy/
         rm -rf daede-src
 
-    - name: Load Aigo AGS21 config
+    - name: Load XR30 eMMC config
       run: |
         [ -e files ] && mv files $SOURCE_NAME/files
         rm -f $SOURCE_NAME/files/etc/uci-defaults/98-install-daed-runfiles
@@ -178,13 +170,15 @@ jobs:
         ${{ matrix.config }}
         EOF
 
-        [ -e config ] && cat config/config-common >>$SOURCE_NAME/.config
+        [ -e config ] && cat config/config-common >> $SOURCE_NAME/.config
 
         cat <<EOF >>$SOURCE_NAME/.config
         CONFIG_PACKAGE_luci-app-daede=y
         CONFIG_PACKAGE_luci-app-daede_daed=y
         # CONFIG_PACKAGE_luci-app-daede_dae is not set
         CONFIG_PACKAGE_daed=y
+        CONFIG_DAED_USE_KERNEL_BTF=y
+        # CONFIG_DAED_USE_VMLINUX_BTF is not set
         EOF
 
         sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" $SOURCE_NAME/package/base-files/files/bin/config_generate
@@ -270,12 +264,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-s21
+        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-xr30
         files: ${{ env.FIRMWARE }}/*
         body: |
           ==================== Firmware Info =======================
-          Workflow: op-s21
-          Device: s21
+          Workflow: op-xr30
+          Device: XR30 eMMC
           Branch: ${{ env.release_tag }}
           Static IP: ${{ github.event.inputs.OP_IP }}
           Extra packages: ${{ github.event.inputs.CUSTOM_PLUGINS }}
