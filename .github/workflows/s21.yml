@@ -160,7 +160,7 @@ jobs:
         chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
         $GITHUB_WORKSPACE/$DIY_P2_SH
         cd ..
-        
+
     - name: Use kenzok8 daede source packages
       run: |
         rm -rf $SOURCE_NAME/package/porxy/dae $SOURCE_NAME/package/porxy/daed $SOURCE_NAME/package/porxy/luci-app-daede
@@ -178,7 +178,7 @@ jobs:
         ${{ matrix.config }}
         EOF
 
-        [ -e config ] && cat config/config-common >> $SOURCE_NAME/.config
+        [ -e config ] && config/config-common >> $SOURCE_NAME/.config
 
         cat <<EOF >>$SOURCE_NAME/.config
         CONFIG_PACKAGE_luci-app-daede=y
