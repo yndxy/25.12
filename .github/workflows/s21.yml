@@ -24,19 +24,20 @@ permissions:
 
 env:
   DIY_P1_SH: sh/op.sh
+  DIY_P2_SH: sh/diy21.sh
 
 jobs:
   build_firmware:
-    name: build XR30 eMMC with kenzok8 daede
+    name: build Aigo AGS21 eMMC with kenzok8 daede
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        device: ["xr30-emmc-daede"]
+        device: ["aigo-ags21-emmc"]
         source: ["openwrt"]
         include:
-          - device: "xr30-emmc-daede"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"
+          - device: "aigo-ags21-emmc"
+            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y"
 
     steps:
     - name: Checkout
