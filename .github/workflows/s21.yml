@@ -168,8 +168,8 @@ jobs:
         mv daede-src/dae daede-src/daed daede-src/luci-app-daede $SOURCE_NAME/package/porxy/
         rm -rf daede-src
 
-        - name: Load Aigo AGS21 
-        run: |
+    - name: Load Aigo AGS21 config
+      run: |
         [ -e files ] && mv files $SOURCE_NAME/files
         rm -f $SOURCE_NAME/files/etc/uci-defaults/98-install-daed-runfiles
         cat <<EOF >>$SOURCE_NAME/.config
@@ -178,7 +178,7 @@ jobs:
         ${{ matrix.config }}
         EOF
 
-        [ -e config ] && config/config-common >>$SOURCE_NAME/.config
+        [ -e config ] && cat config/config-common >>$SOURCE_NAME/.config
 
         cat <<EOF >>$SOURCE_NAME/.config
         CONFIG_PACKAGE_luci-app-daede=y
@@ -198,7 +198,6 @@ jobs:
           esac
           echo "CONFIG_PACKAGE_${plugin}=y" >> $SOURCE_NAME/.config
         done
-
 
     - name: Download package sources
       id: package
