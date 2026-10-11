@@ -32,11 +32,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device: ["xr30-emmc-daede"]
+        device: ["aigo-ags21"]
         source: ["openwrt"]
         include:
           - device: "xr30-emmc-daede"
-            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_cmcc_xr30-emmc=y"
+            config: "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_aigo_ags21=y"
 
     steps:
     - name: Checkout
@@ -268,8 +268,8 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
         body: |
           ==================== Firmware Info =======================
-          Workflow: op-xr30
-          Device: XR30 eMMC
+          Workflow: op-AGS21
+          Device: Aigo AGS21
           Branch: ${{ env.release_tag }}
           Static IP: ${{ github.event.inputs.OP_IP }}
           Extra packages: ${{ github.event.inputs.CUSTOM_PLUGINS }}
