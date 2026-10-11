@@ -202,6 +202,13 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Verify .config entries
+      run: |
+        cd ${{ matrix.source }}
+        echo "=== Checking .config for AGS21 ==="
+        grep -E "CONFIG_TARGET_DEVICE.*aigo_ags21" .config || echo "NOT FOUND: aigo_ags21 config"
+        grep "CONFIG_TARGET_mediatek_filogic=y" .config || echo "NOT FOUND: mediatek_filogic"
+
     - name: BPF/LLVM early checkpoint
       run: |
         cd $SOURCE_NAME
