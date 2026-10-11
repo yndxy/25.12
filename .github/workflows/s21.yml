@@ -27,7 +27,7 @@ env:
 
 jobs:
   build_firmware:
-    name: build XR30 eMMC with kenzok8 daede
+    name: build ags21 eMMC with kenzok8 daede
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -121,7 +121,7 @@ jobs:
         key: ${{ matrix.source }}-${{ matrix.device }}-build-cache-${{ github.run_id }}
         restore-keys: |
           ${{ matrix.source }}-${{ matrix.device }}-build-cache-
-          ${{ matrix.source }}-xr30-emmc-build-cache-
+          ${{ matrix.source }}-aigo-ags21-build-cache-
           ${{ matrix.source }}-mt7981-multi-build-cache-
 
     - name: Validate toolchain cache
@@ -264,7 +264,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-xr30
+        tag_name: ${{ env.release_tag }}-${{ env.tag }}-op-ags21
         files: ${{ env.FIRMWARE }}/*
         body: |
           ==================== Firmware Info =======================
