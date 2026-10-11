@@ -160,7 +160,7 @@ jobs:
         mv daede-src/dae daede-src/daed daede-src/luci-app-daede $SOURCE_NAME/package/porxy/
         rm -rf daede-src
 
-    - name: Load XR30 eMMC config
+    - name: Load Aigo AGS21 config
       run: |
         [ -e files ] && mv files $SOURCE_NAME/files
         rm -f $SOURCE_NAME/files/etc/uci-defaults/98-install-daed-runfiles
