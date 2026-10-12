@@ -32,6 +32,11 @@ grep HASH target/linux/generic/kernel-6.12 | awk -F'HASH-' '{print $2}' | awk '{
 git clone -b packages --depth 1 --single-branch https://github.com/shiyu1314/openwrt-feeds package/xd
 git clone -b porxy --depth 1 --single-branch https://github.com/shiyu1314/openwrt-feeds package/porxy
 
+# mihomo-alpha 与 mihomo-meta 因 PROVIDES/VARIANT/CONFLICTS 互指，
+# 在 OpenWrt 25.12 下生成 Kconfig 递归依赖（recursive dependency），导致 make defconfig 失败。
+# 配置中未选用这两个包，直接移除。
+rm -rf package/porxy/mihomo-alpha package/porxy/mihomo-meta
+
 [ -f package/xd/smartdns/Makefile ] && sed -i -E \
   -e 's/[[:space:]]*PACKAGE_smartdns-ui:rust-bindgen\/host//g' \
   -e 's/[[:space:]]*rust-bindgen\/host//g' \
@@ -277,6 +282,7 @@ sed -ri "s/(PKG_VERSION:=)[^\"]*/\1$RUST_VERSION/;s/(PKG_HASH:=)[^\"]*/\1$RUST_H
 # fstools
 rm -rf package/system/fstools
 git clone https://github.com/sbwml/package_system_fstools -b openwrt-25.12 package/system/fstools
+
 # util-linux
 rm -rf package/utils/util-linux
 git clone https://github.com/sbwml/package_utils_util-linux -b openwrt-25.12 package/utils/util-linux
@@ -308,6 +314,7 @@ sed -i '/\/etc\/nginx\/uci.conf.template/d' feeds/packages/net/nginx-util/Makefi
 # uwsgi - fix timeout
 sed -i '$a cgi-timeout = 600' feeds/packages/net/uwsgi/files-luci-support/luci-*.ini
 sed -i '/limit-as/c\limit-as = 5000' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
+
 # disable error log
 sed -i "s/procd_set_param stderr 1/procd_set_param stderr 0/g" feeds/packages/net/uwsgi/files/uwsgi.init
 
