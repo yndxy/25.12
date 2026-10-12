@@ -122,7 +122,6 @@ jobs:
         restore-keys: |
           ${{ matrix.source }}-${{ matrix.device }}-build-cache-
           ${{ matrix.source }}-aigo-ags21-build-cache-
-          ${{ matrix.source }}-mt7981-multi-build-cache-
 
     - name: Validate toolchain cache
       run: |
@@ -250,6 +249,14 @@ jobs:
     - name: Show disk usage
       if: (!cancelled())
       run: df -hT
+
+    - name: List built firmware
+      if: always()
+      run: |
+        echo "=== bin/targets content ==="
+        find $SOURCE_NAME/bin/targets -maxdepth 3 -type f 2>/dev/null | head -50 || true
+        echo "=== .config device lines ==="
+        grep -E "TARGET_DEVICE" $SOURCE_NAME/.config | head -20 || true
 
     - name: Organize firmware
       id: organize
