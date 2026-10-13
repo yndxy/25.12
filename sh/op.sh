@@ -187,6 +187,15 @@ fi
 rm -rf feeds/luci/applications/{luci-app-dockerman,luci-app-samba4,luci-app-aria2,luci-app-diskman,luci-app-mosdns}
 rm -rf feeds/packages/net/{samba4,v2ray-geodata,mosdns,sing-box,aria2,ariang,lucky,adguardhome}
 
+# Vantage LuCI theme + dashboard (replaces luci-theme-m3e)
+rm -rf package/luci-theme-vantage package/luci-app-vantage vantage-repo
+git clone --depth=1 --single-branch --filter=blob:none --sparse https://github.com/anothaDev/luci-theme-vantage vantage-repo
+pushd vantage-repo || exit 1
+git sparse-checkout set luci-theme-vantage luci-app-vantage
+popd
+mv -f vantage-repo/luci-theme-vantage vantage-repo/luci-app-vantage package/
+rm -rf vantage-repo
+
 # drop attendedsysupgrade
 sed -i '/luci-app-attendedsysupgrade/d' \
     feeds/luci/collections/luci-nginx/Makefile \
@@ -282,7 +291,6 @@ sed -ri "s/(PKG_VERSION:=)[^\"]*/\1$RUST_VERSION/;s/(PKG_HASH:=)[^\"]*/\1$RUST_H
 # fstools
 rm -rf package/system/fstools
 git clone https://github.com/sbwml/package_system_fstools -b openwrt-25.12 package/system/fstools
-
 # util-linux
 rm -rf package/utils/util-linux
 git clone https://github.com/sbwml/package_utils_util-linux -b openwrt-25.12 package/utils/util-linux
@@ -314,7 +322,6 @@ sed -i '/\/etc\/nginx\/uci.conf.template/d' feeds/packages/net/nginx-util/Makefi
 # uwsgi - fix timeout
 sed -i '$a cgi-timeout = 600' feeds/packages/net/uwsgi/files-luci-support/luci-*.ini
 sed -i '/limit-as/c\limit-as = 5000' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
-
 # disable error log
 sed -i "s/procd_set_param stderr 1/procd_set_param stderr 0/g" feeds/packages/net/uwsgi/files/uwsgi.init
 
