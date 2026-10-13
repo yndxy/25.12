@@ -5,7 +5,7 @@ SOURCE_NAME="${SOURCE_NAME:-openwrt}"
 REPO_URL="${REPO_URL:-https://github.com/shiyu1314/openwrt-source}"
 REPO_BRANCH="${REPO_BRANCH:-openwrt-25.12}"
 DIY_P1_SH="${DIY_P1_SH:-sh/op.sh}"
-OP_IP="${OP_IP:-192.168.2.1}"
+OP_IP="${OP_IP:-192.168.6.1}"
 OP_author="${OP_author:-kubulama}"
 CUSTOM_PLUGINS="${CUSTOM_PLUGINS:-luci-app-zerotier luci-app-socat luci-app-samba4 luci-theme-vantage luci-app-vantage luci-app-ttyd luci-app-diskman luci-app-daed luci-i18n-daed-zh-cn}"
 
