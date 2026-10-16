@@ -356,6 +356,11 @@ mv -f luci-app-adguardhome package/
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 
+# luci-app-mosdns：替换busybox wget为curl，解决本地API调用2.6秒延迟
+sed -i 's/wget -q -O - ${post_flag}/curl -s -o - ${post_flag}/' package/mosdns/luci-app-mosdns/root/usr/share/rpcd/ucode/luci.mosdns
+sed -i 's/exec_sys(`wget -q -O -/exec_sys(`curl -s -o -/' package/mosdns/luci-app-mosdns/root/usr/share/rpcd/ucode/luci.mosdns
+sed -i 's/--post-data=""/-d ""/' package/mosdns/luci-app-mosdns/root/usr/share/rpcd/ucode/luci.mosdns
+
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
