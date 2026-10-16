@@ -349,7 +349,8 @@ git clone https://github.com/sirpdboy/luci-app-lucky.git package/luci-app-lucky
 
 # AdGuardHome
 rm -rf package/luci-app-adguardhome
-git clone https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luci-app-adguardhome
+git_sparse_clone main https://github.com/terrytyc/luci-app-adguardhome luci-app-adguardhome
+mv -f luci-app-adguardhome package/
 
 #golang 26.x
 rm -rf feeds/packages/lang/golang
