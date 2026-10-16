@@ -305,6 +305,8 @@ git clone https://github.com/sirpdboy/luci-app-lucky.git package/luci-app-lucky
 # ========== feeds 操作 ==========
 ./scripts/feeds update -a
 # 彻底清理feeds中所有adguardhome相关包，避免同名冲突
+find feeds/ -type d -name "luci-app-adguardhome" -exec rm -rf {} +
+find feeds/ -type d -name "luci-i18n-adguardhome-zh-cn" -exec rm -rf {} +
 rm -rf feeds/luci/applications/luci-app-adguardhome
 rm -rf feeds/packages/net/adguardhome
 ./scripts/feeds install -a
