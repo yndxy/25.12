@@ -1,5 +1,4 @@
 #!/bin/bash
-
 function git_sparse_clone() {
   branch="$1" repourl="$2" && shift 2
   git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
@@ -8,12 +7,9 @@ function git_sparse_clone() {
   mv -f $@ ../
   cd .. && rm -rf $repodir
 }
-
 set -x
-
 apply_patch_once() {
     patch_file="$1"
-
     echo "Applying $patch_file ..."
     if patch -p1 --dry-run --silent < "$patch_file"; then
         patch -p1 --forward --no-backup-if-mismatch < "$patch_file"
@@ -24,25 +20,20 @@ apply_patch_once() {
         return 1
     fi
 }
-
 # kenrel Vermagic
 sed -ie 's/^\(.\).*vermagic$/\1cp $(TOPDIR)\/.vermagic $(LINUX_DIR)\/.vermagic/' include/kernel-defaults.mk
 grep HASH target/linux/generic/kernel-6.12 | awk -F'HASH-' '{print $2}' | awk '{print $1}' | md5sum | awk '{print $1}' > .vermagic
-
 git clone -b packages --depth 1 --single-branch https://github.com/shiyu1314/openwrt-feeds package/xd
 git clone -b porxy --depth 1 --single-branch https://github.com/shiyu1314/openwrt-feeds package/porxy
-
 # mihomo-alpha 与 mihomo-meta 因 PROVIDES/VARIANT/CONFLICTS 互指，
 # 在 OpenWrt 25.12 下生成 Kconfig 递归依赖（recursive dependency），导致 make defconfig 失败。
 # 配置中未选用这两个包，直接移除。
 rm -rf package/porxy/mihomo-alpha package/porxy/mihomo-meta
-
 [ -f package/xd/smartdns/Makefile ] && sed -i -E \
   -e 's/[[:space:]]*PACKAGE_smartdns-ui:rust-bindgen\/host//g' \
   -e 's/[[:space:]]*rust-bindgen\/host//g' \
   -e 's/[[:space:]]*PACKAGE_smartdns-ui://g' \
   package/xd/smartdns/Makefile
-
 # Use QiuSimons' newer daed/luci-app-daed packages while keeping package names
 # compatible with the existing luci-app-daed selection.
 rm -rf package/porxy/daed package/porxy/luci-app-daed
@@ -53,7 +44,6 @@ git sparse-checkout set daed luci-app-daed
 popd
 mv -f qiu-luci-app-daed/daed qiu-luci-app-daed/luci-app-daed package/porxy/
 rm -rf qiu-luci-app-daed
-
 # Match daeuniverse/daed's declared package manager. Floating to latest pnpm
 # can change lifecycle-script handling and make the frontend build flaky.
 sed -i 's/npm install -g pnpm/npm install -g pnpm@10.24.0/' package/porxy/daed/Makefile
@@ -61,7 +51,6 @@ grep -Fq 'npm install -g pnpm@10.24.0' package/porxy/daed/Makefile || {
   echo "ERROR: failed to pin daed pnpm version"
   exit 1
 }
-
 # QiuSimons' current daed package builds the upstream monorepo with
 # `pnpm build --filter daed`, which can leave apps/web/dist empty or leave
 # workspace packages as browser-side bare imports. dae-wing embeds
@@ -70,14 +59,12 @@ grep -Fq 'npm install -g pnpm@10.24.0' package/porxy/daed/Makefile || {
 # diagnostics if assets are still missing or cannot run standalone in a browser.
 python3 - <<'PY'
 from pathlib import Path
-
 path = Path("package/porxy/daed/Makefile")
 lines = path.read_text().splitlines(keepends=True)
 out = []
 patched_install = False
 patched_build = False
 patched_copy = False
-
 for line in lines:
     stripped = line.strip()
     if stripped == "pnpm install ; \\":
@@ -107,7 +94,6 @@ for line in lines:
         patched_copy = True
         continue
     out.append(line)
-
 missing = []
 if not patched_install:
     missing.append("pnpm install")
@@ -117,7 +103,6 @@ if not patched_copy:
     missing.append("daed web asset copy")
 if missing:
     raise SystemExit("ERROR: failed to patch daed Makefile sections: " + ", ".join(missing))
-
 path.write_text("".join(out))
 PY
 grep -Fq 'pnpm -C apps/web build' package/porxy/daed/Makefile || {
@@ -136,7 +121,6 @@ grep -Fq 'browser-side bare module imports' package/porxy/daed/Makefile || {
   echo "ERROR: failed to patch daed browser asset validation"
   exit 1
 }
-
 # daed listens on plain HTTP by default. If LuCI is opened over HTTPS, the
 # upstream iframe helper inherits the HTTPS scheme and points the browser at
 # https://router:2023, which fails because daed is not serving TLS.
@@ -144,7 +128,6 @@ if [ -f package/porxy/luci-app-daed/luasrc/view/daed/daed.htm ]; then
   sed -i "s/var protocol = window.location.protocol;/var protocol = 'http:';/" \
     package/porxy/luci-app-daed/luasrc/view/daed/daed.htm
 fi
-
 # Keep the original daed dashboard assets embedded in dae-wing. QiuSimons'
 # Makefile gzips larger JS/CSS assets and may remove the original files; on
 # some builds the embedded dashboard then opens as a blank white page because
@@ -152,13 +135,11 @@ fi
 # correctly.
 python3 - <<'PY'
 from pathlib import Path
-
 path = Path("package/porxy/daed/Makefile")
 lines = path.read_text().splitlines(keepends=True)
 out = []
 removed = False
 i = 0
-
 while i < len(lines):
     line = lines[i]
     if "find $(PKG_BUILD_DIR)/webrender/web -type f -size +4k" in line:
@@ -173,20 +154,16 @@ while i < len(lines):
         continue
     out.append(line)
     i += 1
-
 if not removed:
     raise SystemExit("ERROR: failed to find daed dashboard asset gzip/delete rule")
-
 path.write_text("".join(out))
 PY
 if grep -Fq 'webrender/web -type f -size +4k' package/porxy/daed/Makefile; then
   echo "ERROR: failed to remove daed dashboard asset gzip/delete rule"
   exit 1
 fi
-
 rm -rf feeds/luci/applications/{luci-app-dockerman,luci-app-samba4,luci-app-aria2,luci-app-diskman,luci-app-mosdns}
 rm -rf feeds/packages/net/{samba4,v2ray-geodata,mosdns,sing-box,aria2,ariang,lucky,adguardhome}
-
 # Vantage LuCI theme + dashboard (replaces luci-theme-m3e)
 rm -rf package/luci-theme-vantage package/luci-app-vantage vantage-repo
 git clone --depth=1 --single-branch --filter=blob:none --sparse https://github.com/anothaDev/luci-theme-vantage vantage-repo
@@ -195,7 +172,6 @@ git sparse-checkout set luci-theme-vantage luci-app-vantage
 popd
 mv -f vantage-repo/luci-theme-vantage vantage-repo/luci-app-vantage package/
 rm -rf vantage-repo
-
 # drop attendedsysupgrade
 sed -i '/luci-app-attendedsysupgrade/d' \
     feeds/luci/collections/luci-nginx/Makefile \
@@ -211,18 +187,15 @@ sed -i "s/+luci /+luci-nginx /g" feeds/luci/collections/luci-ssl/Makefile
 sed -i 's/+uhttpd +uhttpd-mod-ubus /+luci-nginx /g' feeds/packages/net/wg-installer/Makefile
 sed -i '/uhttpd-mod-ubus/d' feeds/luci/collections/luci-light/Makefile
 sed -i 's/+luci-nginx \\$/+luci-nginx/' feeds/luci/collections/luci-light/Makefile
-
 pushd feeds/luci || exit 1
 for patch in *.patch; do
     [ -f "$patch" ] || continue
-
     apply_patch_once "$patch" || {
         popd
         exit 1
     }
 done
 popd
-
 filogic_mk="target/linux/mediatek/image/filogic.mk"
 if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
     awk '
@@ -268,89 +241,80 @@ if ! grep -q "Device/jcg_q30-pro" "$filogic_mk"; then
     ' "$filogic_mk" > "$filogic_mk.tmp"
     mv "$filogic_mk.tmp" "$filogic_mk"
 fi
-
 for patch in *.patch; do
     [ -f "$patch" ] || continue
-
     if [ "$patch" = "005-mediatek-filogic-add-jcg-q30-pro.patch" ]; then
         echo "Skipping $patch: JCG Q30 PRO profile is managed by sh/op.sh"
         continue
     fi
-
     apply_patch_once "$patch" || {
         exit 1
     }
 done
-
-
 # rust
 RUST_VERSION=1.95.0
 RUST_HASH=62b67230754da642a264ca0cb9fc08820c54e2ed7b3baba0289876d4cdb48c08
 sed -ri "s/(PKG_VERSION:=)[^\"]*/\1$RUST_VERSION/;s/(PKG_HASH:=)[^\"]*/\1$RUST_HASH/" feeds/packages/lang/rust/Makefile
-
 # fstools
 rm -rf package/system/fstools
 git clone https://github.com/sbwml/package_system_fstools -b openwrt-25.12 package/system/fstools
 # util-linux
 rm -rf package/utils/util-linux
 git clone https://github.com/sbwml/package_utils_util-linux -b openwrt-25.12 package/utils/util-linux
-
 # nghttp3
 rm -rf feeds/packages/libs/nghttp3
 git clone https://github.com/sbwml/package_libs_nghttp3 package/libs/nghttp3
-
 # ngtcp2
 rm -rf feeds/packages/libs/ngtcp2
 git clone https://github.com/sbwml/package_libs_ngtcp2 package/libs/ngtcp2
-
 # curl - fix passwall `time_pretransfer` check
 rm -rf feeds/packages/net/curl
 git clone https://github.com/sbwml/feeds_packages_net_curl feeds/packages/net/curl
-
 # nginx - latest version
 rm -rf feeds/packages/net/nginx
 git clone https://github.com/sbwml/feeds_packages_net_nginx feeds/packages/net/nginx -b openwrt-25.12
 sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/g;s/procd_set_param stderr 1/procd_set_param stderr 0/g' feeds/packages/net/nginx/files/nginx.init
-
 # nginx - ubus
 sed -i 's/ubus_parallel_req 2/ubus_parallel_req 6/g' feeds/packages/net/nginx/files-luci-support/60_nginx-luci-support
 sed -i '/ubus_parallel_req/a\        ubus_script_timeout 300;' feeds/packages/net/nginx/files-luci-support/60_nginx-luci-support
-
 # nginx-util
 sed -i '/\/etc\/nginx\/uci.conf.template/d' feeds/packages/net/nginx-util/Makefile
-
 # uwsgi - fix timeout
 sed -i '$a cgi-timeout = 600' feeds/packages/net/uwsgi/files-luci-support/luci-*.ini
-sed -i '/limit-as/c\limit-as = 5000' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
+sed -i '/limit-as/c\limit-as = 500' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
 # disable error log
 sed -i "s/procd_set_param stderr 1/procd_set_param stderr 0/g" feeds/packages/net/uwsgi/files/uwsgi.init
-
 # uwsgi - performance
 sed -i 's/threads = 1/threads = 2/g' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
 sed -i 's/processes = 3/processes = 4/g' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
 sed -i 's/cheaper = 1/cheaper = 2/g' feeds/packages/net/uwsgi/files-luci-support/luci-webui.ini
-
 # rpcd - fix timeout
 sed -i 's/option timeout 30/option timeout 60/g' package/system/rpcd/files/rpcd.config
 sed -i 's#20) \* 1000#60) \* 1000#g' feeds/luci/modules/luci-base/htdocs/luci-static/resources/rpc.js
-
 # luci-compat - remove extra line breaks from description
 sed -i '/<br \/>/d' feeds/luci/modules/luci-compat/luasrc/view/cbi/full_valuefooter.htm
-
 # mosdns
 find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
 find ./ | grep Makefile | grep mosdns | xargs rm -f
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
 git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
-
 # Lucky (只拉取指定分支)
 rm -rf package/luci-app-lucky
 git clone https://github.com/sirpdboy/luci-app-lucky.git package/luci-app-lucky
 
-# AdGuardHome
+# ========== feeds 操作 ==========
+./scripts/feeds update -a
+# 彻底清理feeds中所有adguardhome相关包，避免同名冲突
+rm -rf feeds/luci/applications/luci-app-adguardhome
+rm -rf feeds/packages/net/adguardhome
+./scripts/feeds install -a
+# ================================
+
+# ========== 自定义包：terrytyc版luci-app-adguardhome（必须放在feeds install之后） ==========
 rm -rf package/luci-app-adguardhome
 git_sparse_clone main https://github.com/terrytyc/luci-app-adguardhome luci-app-adguardhome
 mv -f luci-app-adguardhome package/
+# ========================================================================
 
 #golang 26.x
 rm -rf feeds/packages/lang/golang
@@ -361,21 +325,11 @@ sed -i 's/wget -q -O - ${post_flag}/curl -s -o - ${post_flag}/' package/mosdns/l
 sed -i 's/exec_sys(`wget -q -O -/exec_sys(`curl -s -o -/' package/mosdns/luci-app-mosdns/root/usr/share/rpcd/ucode/luci.mosdns
 sed -i 's/--post-data=""/-d ""/' package/mosdns/luci-app-mosdns/root/usr/share/rpcd/ucode/luci.mosdns
 
-./scripts/feeds update -a
-./scripts/feeds install -a
-
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
-
-
 sudo rm -rf package/base-files/files/etc/banner
-
 sed -i "s/%D %V %C/%D %V $(TZ=UTC-8 date +%Y.%m.%d)/" package/base-files/files/etc/openwrt_release
-
 sed -i "s/%R/by $OP_author/" package/base-files/files/etc/openwrt_release
-
 date=$(date +"%Y-%m-%d")
-
-
 echo "                                                    " >> package/base-files/files/etc/banner
 echo "  _______                     ________        __" >> package/base-files/files/etc/banner
 echo " |       |.-----.-----.-----.|  |  |  |.----.|  |_" >> package/base-files/files/etc/banner
