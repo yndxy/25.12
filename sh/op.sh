@@ -119,6 +119,10 @@ sed -i '/<br \/>/d' feeds/luci/modules/luci-compat/luasrc/view/cbi/full_valuefoo
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 
+# AdGuardHome
+rm -rf package/xd/luci-app-adguardhome
+git clone https://github.com/terrytyc/luci-app-adguardhome  package/luci-app-adguardhome
+
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
