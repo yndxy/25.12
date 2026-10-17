@@ -123,6 +123,12 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 rm -rf package/xd/luci-app-adguardhome
 git clone https://github.com/terrytyc/luci-app-adguardhome  package/luci-app-adguardhome
 
+# mosdns
+find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
+find ./ | grep Makefile | grep mosdns | xargs rm -f
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
