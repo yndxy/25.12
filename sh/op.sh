@@ -124,10 +124,11 @@ rm -rf package/xd/luci-app-adguardhome
 git clone https://github.com/terrytyc/luci-app-adguardhome  package/luci-app-adguardhome
 
 # mosdns
-find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
-find ./ | grep Makefile | grep mosdns | xargs rm -f
-git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
-git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+find package feeds -type d -iname "*mosdns*" -exec rm -rf {} +
+find package feeds -type d -iname "*v2ray-geodata*" -exec rm -rf {} +
+git clone --depth=1 -b v5 --single-branch https://github.com/sbwml/luci-app-mosdns package/mosdns
+git clone --depth=1 --single-branch https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+
 
 ./scripts/feeds update -a
 ./scripts/feeds install -a
