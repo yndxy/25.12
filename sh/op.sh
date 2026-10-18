@@ -126,6 +126,7 @@ sed -i -E 's/[[:space:]]*\+adguardhome//g' package/luci-app-adguardhome/Makefile
 ls package/luci-app-adguardhome/Makefile || {
   echo "ERROR: luci-app-adguardhome 包不存在"
   exit 1
+}
 
 # mosdns
 find package feeds -type d -iname "*mosdns*" -exec rm -rf {} +
