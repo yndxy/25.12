@@ -62,13 +62,14 @@ for patch in *.patch; do
 done
 
 # rust
-RUST_VERSION=1.95.0
-RUST_HASH=62b67230754da642a264ca0cb9fc08820c54e2ed7b3baba0289876d4cdb48c08
+RUST_VERSION=1.99.1
+RUST_HASH=6451598a99e77f07571960f6b21d577399d3a30f33e80cbd2e3a4aae6535d265
 sed -ri "s/(PKG_VERSION:=)[^\"]*/\1$RUST_VERSION/;s/(PKG_HASH:=)[^\"]*/\1$RUST_HASH/" feeds/packages/lang/rust/Makefile
 
 # fstools
 rm -rf package/system/fstools
 git clone https://github.com/sbwml/package_system_fstools -b openwrt-25.12 package/system/fstools
+
 # util-linux
 rm -rf package/utils/util-linux
 git clone https://github.com/sbwml/package_utils_util-linux -b openwrt-25.12 package/utils/util-linux
@@ -122,11 +123,6 @@ git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/l
 # AdGuardHome
 find package feeds -type d -iname "*adguardhome*" -exec rm -rf {} +
 git clone --depth=1 -b main --single-branch https://github.com/stevenjoezhang/luci-app-adguardhome package/luci-app-adguardhome
-sed -i -E 's/[[:space:]]*\+adguardhome//g' package/luci-app-adguardhome/Makefile
-ls package/luci-app-adguardhome/Makefile || {
-  echo "ERROR: luci-app-adguardhome 包不存在"
-  exit 1
-}
 
 # mosdns
 find package feeds -type d -iname "*mosdns*" -exec rm -rf {} +
