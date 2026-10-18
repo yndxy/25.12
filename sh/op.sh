@@ -121,7 +121,8 @@ rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 27.x feeds/packages/lang/golang
 
 # AdGuardHome
-rm -rf feeds/packages/xd/luci-app-adguardhome
+rm -rf package/xd/luci-app-adguardhome
+rm -rf package/luci-app-adguardhome
 git clone --depth=1 https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luci-app-adguardhome
 
 # mosdns
