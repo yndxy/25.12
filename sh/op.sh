@@ -118,11 +118,11 @@ sed -i '/<br \/>/d' feeds/luci/modules/luci-compat/luasrc/view/cbi/full_valuefoo
 
 #golang 26.x
 rm -rf feeds/packages/lang/golang
-git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 27.x feeds/packages/lang/golang
 
 # AdGuardHome
-find package feeds -type d -iname "*adguardhome*" -exec rm -rf {} +
-git clone --depth=1 -b main --single-branch https://github.com/stevenjoezhang/luci-app-adguardhome package/luci-app-adguardhome
+rm -rf feeds/packages/xd/luci-app-adguardhome
+git clone --depth=1 https://github.com/stevenjoezhang/luci-app-adguardhome.git package/luci-app-adguardhome
 
 # mosdns
 find package feeds -type d -iname "*mosdns*" -exec rm -rf {} +
