@@ -307,3 +307,5 @@ CONFIG_PACKAGE_coreutils-timeout=y
 # 启用 nftables 队列内核模块及相关底层支持
 CONFIG_PACKAGE_kmod-nft-queue=y
 CONFIG_PACKAGE_kmod-nfnetlink-queue=y
+CONFIG_PACKAGE_prosody=n
+CONFIG_PACKAGE_vmlinux-btf=n
