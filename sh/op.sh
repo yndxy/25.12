@@ -120,8 +120,12 @@ rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 
 # AdGuardHome
-# find package feeds -type d -iname "*adguardhome*" -exec rm -rf {} +
-# git clone --depth=1 -b main --single-branch https://github.com/terrytyc/luci-app-adguardhome package/luci-app-adguardhome
+find package feeds -type d -iname "*adguardhome*" -exec rm -rf {} +
+git clone --depth=1 -b main --single-branch https://github.com/stevenjoezhang/luci-app-adguardhome package/luci-app-adguardhome
+sed -i -E 's/[[:space:]]*\+adguardhome//g' package/luci-app-adguardhome/Makefile
+ls package/luci-app-adguardhome/Makefile || {
+  echo "ERROR: luci-app-adguardhome 包不存在"
+  exit 1
 
 # mosdns
 find package feeds -type d -iname "*mosdns*" -exec rm -rf {} +
