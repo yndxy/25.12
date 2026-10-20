@@ -142,6 +142,17 @@ sed -i 's/--post-data=""/-d ""/' package/mosdns/luci-app-mosdns/root/usr/share/r
 
 sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
+# ================= WiFi 增强：MT7981 高功率 EEPROM =================
+# 来源: newser72/openwrt-rax3000m-25.12 (eeprom/ + diy-part2.sh)
+# 把高功率校准文件注入 files/lib/firmware，随固件打包进 rootfs，
+# 让 mt_wifi 闭源驱动加载 25dB 校准（原厂 EEPROM 一般只有 ~22dBm）。
+# 注意：本脚本在"加载自定义配置"步骤(mv files)之前执行，路径用 $GITHUB_WORKSPACE 绝对定位。
+# 想换 26dB 版：把下面的 25dB-nx30pro_eeprom.bin 改为 26dB-justfor25.12-MT7981_iPAiLNA_EEPROM.bin
+mkdir -p $GITHUB_WORKSPACE/files/lib/firmware
+cp -f $GITHUB_WORKSPACE/eeprom/25dB-nx30pro_eeprom.bin \
+      $GITHUB_WORKSPACE/files/lib/firmware/MT7981_iPAiLNA_EEPROM.bin
+ln -sf /lib/firmware/MT7981_iPAiLNA_EEPROM.bin $GITHUB_WORKSPACE/files/lib/firmware/e2p
+
 sudo rm -rf package/base-files/files/etc/banner
 
 sed -i "s/%D %V %C/%D %V $(TZ=UTC-8 date +%Y.%m.%d)/" package/base-files/files/etc/openwrt_release
@@ -149,6 +160,7 @@ sed -i "s/%D %V %C/%D %V $(TZ=UTC-8 date +%Y.%m.%d)/" package/base-files/files/e
 sed -i "s/%R/by $OP_author/" package/base-files/files/etc/openwrt_release
 
 date=$(date +"%Y-%m-%d")
+
 
 
 echo "                                                    " >> package/base-files/files/etc/banner
